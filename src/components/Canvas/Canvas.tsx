@@ -1,0 +1,123 @@
+import { useRef } from 'react';
+import useCompositorStore from '../../store/compositorStore';
+import CanvasRenderer from './CanvasRenderer';
+
+/**
+ * Canvas container component
+ * Handles image uploads and manages canvas rendering
+ */
+function Canvas() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const addLayer = useCompositorStore((state) => state.addLayer);
+
+  /**
+   * Handle image file upload
+   * Converts images to base64 data URIs
+   */
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.currentTarget.files;
+    if (!files) {
+      console.warn('[DEBUG] No files selected');
+      return;
+    }
+
+    console.log(`[DEBUG] Processing ${files.length} image file(s)`);
+
+    for (const file of Array.from(files)) {
+      try {
+        // Validate file type
+        if (!['image/png', 'image/gif', 'image/bmp', 'image/jpeg'].includes(file.type)) {
+          console.warn(`[DEBUG] Unsupported file type: ${file.type}`);
+          alert(`Unsupported file type: ${file.type}. Please use PNG, GIF, BMP, or JPEG.`);
+          continue;
+        }
+
+        console.log(`[DEBUG] Loading image: ${file.name} (${file.size} bytes, ${file.type})`);
+
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(file);
+        });
+
+        // Create a temporary image to get dimensions
+        const img = new Image();
+        img.src = dataUrl;
+
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Failed to load image'));
+        });
+
+        const width = img.naturalWidth;
+        const height = img.naturalHeight;
+
+        console.log(`[DEBUG] Image loaded: ${file.name} (${width}x${height})`);
+
+        // Add layer to store
+        addLayer({
+          name: file.name,
+          imageData: dataUrl,
+          x: 0,
+          y: 0,
+          zIndex: useCompositorStore.getState().project.layers.length,
+          visible: true,
+          locked: false,
+          opacity: 1.0,
+          width,
+          height,
+        });
+
+        console.log(`[DEBUG] Layer added: ${file.name}`);
+      } catch (error) {
+        console.error(`[DEBUG] Error loading image ${file.name}:`, error);
+        alert(`Error loading image ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="w-full h-full flex flex-col relative">
+      {/* Canvas Area */}
+      <div className="flex-1 relative overflow-hidden">
+        <CanvasRenderer />
+      </div>
+
+      {/* Upload Zone Overlay (shown when no layers) */}
+      {useCompositorStore((state) => state.project.layers.length === 0) && (
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 cursor-pointer hover:bg-opacity-40 transition-all z-10"
+        >
+          <div className="text-center">
+            <div className="text-4xl mb-4">📁</div>
+            <div className="text-lg font-semibold text-white mb-2">
+              Click to upload images or drag & drop
+            </div>
+            <div className="text-sm text-gray-400">
+              Supported: PNG, GIF, BMP, JPEG
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/png,image/gif,image/bmp,image/jpeg"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
+    </div>
+  );
+}
+
+export default Canvas;
