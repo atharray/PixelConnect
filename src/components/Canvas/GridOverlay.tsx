@@ -4,19 +4,19 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { GridConfig } from '../../types/compositor.types';
+import { GridConfig, Layer } from '../../types/compositor.types';
 
 interface GridOverlayProps {
   canvas: HTMLCanvasElement | null;
-  viewport: { zoom: number; panX: number; panY: number };
   gridConfig: GridConfig;
+  layers: Layer[];
 }
 
-function GridOverlay({ canvas, viewport, gridConfig }: GridOverlayProps) {
+function GridOverlay({ canvas, gridConfig, layers }: GridOverlayProps) {
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!gridCanvasRef.current || !canvas || !gridConfig.enabled) {
+    if (!gridCanvasRef.current || !canvas) {
       return;
     }
 
@@ -28,29 +28,35 @@ function GridOverlay({ canvas, viewport, gridConfig }: GridOverlayProps) {
     gridCanvas.width = canvas.width;
     gridCanvas.height = canvas.height;
 
-    ctx.fillStyle = gridConfig.color;
-    ctx.globalAlpha = gridConfig.opacity;
+    ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
 
-    const gridSize = gridConfig.size;
+    // Draw alignment grid if enabled
+    if (gridConfig.enabled) {
+      ctx.strokeStyle = gridConfig.color;
+      ctx.globalAlpha = gridConfig.opacity;
+      ctx.lineWidth = 1;
 
-    // Draw vertical lines
-    for (let x = 0; x < canvas.width; x += gridSize) {
-      ctx.fillRect(x, 0, 1, canvas.height);
+      const gridSize = gridConfig.size;
+
+      // Draw vertical lines
+      for (let x = gridSize; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+
+      // Draw horizontal lines
+      for (let y = gridSize; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = 1;
     }
-
-    // Draw horizontal lines
-    for (let y = 0; y < canvas.height; y += gridSize) {
-      ctx.fillRect(0, y, canvas.width, 1);
-    }
-
-    ctx.globalAlpha = 1;
-
-    console.log(`[DEBUG] Grid overlay rendered: ${gridSize}px, opacity: ${gridConfig.opacity}`);
-  }, [canvas, gridConfig]);
-
-  if (!gridConfig.enabled) {
-    return null;
-  }
+  }, [canvas, gridConfig, layers]);
 
   return (
     <canvas
@@ -60,8 +66,6 @@ function GridOverlay({ canvas, viewport, gridConfig }: GridOverlayProps) {
         top: 0,
         left: 0,
         pointerEvents: 'none',
-        transform: `scale(${viewport.zoom / 100})`,
-        transformOrigin: 'top left',
       }}
     />
   );

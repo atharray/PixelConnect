@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import GridOverlay from './GridOverlay';
-import Rulers from './Rulers';
 
 /**
  * Canvas renderer component
@@ -164,41 +163,30 @@ function CanvasRenderer() {
     const container = containerRef.current;
     if (!container) return { x: 0, y: 0 };
 
-    // Get the canvas viewport container bounds
     const containerRect = container.getBoundingClientRect();
     
     // Position relative to the container
-    const relativeX = screenX - containerRect.left - 20; // 20px for ruler
-    const relativeY = screenY - containerRect.top - 20;  // 20px for ruler
+    const relativeX = screenX - containerRect.left - 20;
+    const relativeY = screenY - containerRect.top - 20;
     
-    // The canvas is centered in the viewport and has zoom applied
-    // Get the container's working area (excluding rulers)
     const viewportWidth = containerRect.width - 20;
     const viewportHeight = containerRect.height - 20;
     
-    // Center offset (where the canvas appears centered)
     const centerX = viewportWidth / 2;
     const centerY = viewportHeight / 2;
     
-    // Distance from center
     const offsetFromCenterX = relativeX - centerX;
     const offsetFromCenterY = relativeY - centerY;
     
-    // Account for zoom and pan
-    // The canvas is scaled by zoom/100, so we divide screen distance by zoom
     const zoom = project.viewport.zoom / 100;
     const canvasDistX = offsetFromCenterX / zoom;
     const canvasDistY = offsetFromCenterY / zoom;
     
-    // Center of canvas in world coordinates
     const canvasCenterX = project.canvas.width / 2;
     const canvasCenterY = project.canvas.height / 2;
     
-    // Apply pan offset
     const worldX = canvasCenterX + canvasDistX + project.viewport.panX;
     const worldY = canvasCenterY + canvasDistY + project.viewport.panY;
-    
-    console.log(`[DEBUG] Screen (${screenX.toFixed(0)}, ${screenY.toFixed(0)}) -> relative (${relativeX.toFixed(1)}, ${relativeY.toFixed(1)}) -> offset (${offsetFromCenterX.toFixed(1)}, ${offsetFromCenterY.toFixed(1)}) -> canvas dist (${canvasDistX.toFixed(1)}, ${canvasDistY.toFixed(1)}) -> world (${worldX.toFixed(1)}, ${worldY.toFixed(1)})`);
     
     return { x: worldX, y: worldY };
   };
@@ -280,22 +268,17 @@ function CanvasRenderer() {
       const deltaX = e.clientX - panStart.x;
       const deltaY = e.clientY - panStart.y;
       
-      // Pan inversely proportional to zoom
       const newPanX = project.viewport.panX - (deltaX / zoom);
       const newPanY = project.viewport.panY - (deltaY / zoom);
       
       setViewport({ panX: newPanX, panY: newPanY });
       setPanStart({ x: e.clientX, y: e.clientY });
-      console.log(`[DEBUG] Panning - new offset (${newPanX.toFixed(1)}, ${newPanY.toFixed(1)})`);
       return;
     }
 
     const isDragging = useCompositorStore.getState().ui.isDraggingLayer;
     if (isDragging) {
       updateDragPosition(worldX, worldY);
-      console.log(
-        `[DEBUG] Dragging - world position (${worldX.toFixed(1)}, ${worldY.toFixed(1)})`
-      );
     }
   };
 
@@ -330,20 +313,10 @@ function CanvasRenderer() {
       className="relative w-full h-full bg-canvas-bg overflow-hidden"
       style={{ paddingTop: '20px', paddingLeft: '20px' }}
     >
-      {/* Rulers */}
-      <Rulers
-        canvasWidth={project.canvas.width}
-        canvasHeight={project.canvas.height}
-        hoverCoords={hoverCoords}
-        zoom={project.viewport.zoom}
-        panX={project.viewport.panX}
-        panY={project.viewport.panY}
-      />
-
-      {/* Canvas container with centering */}
+      {/* Canvas container with centering and scrollbars */}
       <div
-        className="w-full h-full overflow-hidden flex items-center justify-center"
-        style={{ width: 'calc(100% - 20px)', height: 'calc(100% - 20px)' }}
+        className="w-full h-full flex items-center justify-center"
+        style={{ width: 'calc(100% - 20px)', height: 'calc(100% - 20px)', overflowX: 'auto', overflowY: 'auto' }}
       >
         <div
           style={{
@@ -368,8 +341,8 @@ function CanvasRenderer() {
           {/* Grid Overlay */}
           <GridOverlay
             canvas={canvasRef.current}
-            viewport={project.viewport}
             gridConfig={project.grid}
+            layers={project.layers}
           />
         </div>
       </div>

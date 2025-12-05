@@ -22,6 +22,51 @@ export function useKeyboardShortcuts() {
   const isPanningRef = useRef(false);
   const panStartXRef = useRef(0);
   const panStartYRef = useRef(0);
+  const keysHeldRef = useRef<Set<string>>(new Set());
+  const movementIntervalRef = useRef<number | null>(null);
+
+  // Handle continuous movement when keys are held
+  const startContinuousMovement = () => {
+    if (movementIntervalRef.current !== null) return;
+    if (selectedLayerIds.length === 0) return;
+
+    movementIntervalRef.current = window.setInterval(() => {
+      let totalDx = 0;
+      let totalDy = 0;
+
+      const movements: Record<string, [number, number]> = {
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+      };
+
+      // Check all arrow keys
+      for (const [key, [dx, dy]] of Object.entries(movements)) {
+        if (keysHeldRef.current.has(key)) {
+          totalDx += dx;
+          totalDy += dy;
+        }
+      }
+
+      // Check shift for 10px nudges
+      if (keysHeldRef.current.has('ShiftLeft') || keysHeldRef.current.has('ShiftRight')) {
+        totalDx *= 10;
+        totalDy *= 10;
+      }
+
+      if (totalDx !== 0 || totalDy !== 0) {
+        moveSelectedLayers(totalDx, totalDy);
+      }
+    }, 50); // 50ms per movement
+  };
+
+  const stopContinuousMovement = () => {
+    if (movementIntervalRef.current !== null) {
+      clearInterval(movementIntervalRef.current);
+      movementIntervalRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -44,37 +89,20 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Arrow keys for nudging
-      if (!isShift && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      // Arrow keys for nudging (add to held keys for continuous movement)
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
         event.preventDefault();
-        const movements: Record<string, [number, number]> = {
-          ArrowUp: [0, -1],
-          ArrowDown: [0, 1],
-          ArrowLeft: [-1, 0],
-          ArrowRight: [1, 0],
-        };
-        const [dx, dy] = movements[event.key];
-        if (selectedLayerIds.length > 0) {
-          moveSelectedLayers(dx, dy);
-          console.log(`[DEBUG] Keyboard nudge: Arrow${event.key} - moving ${dx}, ${dy}`);
+        keysHeldRef.current.add(event.key);
+        if (keysHeldRef.current.has('ShiftLeft') || keysHeldRef.current.has('ShiftRight')) {
+          keysHeldRef.current.add('ShiftLeft');
         }
+        startContinuousMovement();
         return;
       }
 
-      // Shift + Arrow keys for 10px nudge
-      if (isShift && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
-        event.preventDefault();
-        const movements: Record<string, [number, number]> = {
-          ArrowUp: [0, -10],
-          ArrowDown: [0, 10],
-          ArrowLeft: [-10, 0],
-          ArrowRight: [10, 0],
-        };
-        const [dx, dy] = movements[event.key];
-        if (selectedLayerIds.length > 0) {
-          moveSelectedLayers(dx, dy);
-          console.log(`[DEBUG] Keyboard nudge: Shift+Arrow${event.key} - moving ${dx}, ${dy}`);
-        }
+      // Track Shift key for 10px movement
+      if (event.key === 'Shift') {
+        keysHeldRef.current.add(event.code);
         return;
       }
 
@@ -186,6 +214,18 @@ export function useKeyboardShortcuts() {
         isPanningRef.current = false;
         console.log('[DEBUG] Pan mode deactivated (Spacebar released)');
       }
+
+      // Remove from held keys tracking
+      keysHeldRef.current.delete(event.key);
+      keysHeldRef.current.delete(event.code);
+
+      // Stop continuous movement if no more arrow keys held
+      const hasArrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some(
+        (key) => keysHeldRef.current.has(key)
+      );
+      if (!hasArrows) {
+        stopContinuousMovement();
+      }
     };
 
     const handleMouseDown = (event: MouseEvent) => {
@@ -227,6 +267,7 @@ export function useKeyboardShortcuts() {
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
+      stopContinuousMovement();
     };
   }, [
     selectedLayerIds,

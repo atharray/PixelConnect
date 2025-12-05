@@ -111,6 +111,7 @@ interface CompositorStore extends AppState {
   setActiveTool: (tool: 'select' | 'pan' | 'zoom') => void;
   toggleGrid: () => void;
   toggleRulers: () => void;
+  setPixelGridEnabled: (enabled: boolean) => void;
   copySelectedLayers: () => void;
   pasteSelectedLayers: () => void;
 
@@ -500,10 +501,9 @@ const useCompositorStore = create<CompositorStore>()(
                   // Apply grid snapping if enabled
                   if (state.project.grid.snapToGrid) {
                     [newX, newY] = applyGridSnap(newX, newY, state.project.grid.size, true);
-                  } else {
-                    newX = Math.floor(newX);
-                    newY = Math.floor(newY);
                   }
+                  // Don't floor during drag - keep float precision for smooth movement at high zoom
+                  // Flooring happens on drag end in stopDraggingLayer
 
                   return { ...layer, x: newX, y: newY };
                 }
@@ -523,6 +523,14 @@ const useCompositorStore = create<CompositorStore>()(
 
       stopDraggingLayer: () => {
         set((state) => ({
+          project: {
+            ...state.project,
+            layers: state.project.layers.map((layer) => ({
+              ...layer,
+              x: Math.floor(layer.x),
+              y: Math.floor(layer.y),
+            })),
+          },
           ui: {
             ...state.ui,
             isDraggingLayer: false,
@@ -624,6 +632,15 @@ const useCompositorStore = create<CompositorStore>()(
             modified: new Date().toISOString(),
           },
           isDirty: true,
+        }));
+      },
+
+      setPixelGridEnabled: (enabled: boolean) => {
+        set((state) => ({
+          ui: {
+            ...state.ui,
+            showPixelGrid: enabled,
+          },
         }));
       },
 
