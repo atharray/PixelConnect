@@ -103,6 +103,10 @@ out
 # vitepress cache directory
 **/.vitepress/cache
 
+# Build output - docs/ folder is for GitHub Pages, do NOT ignore it
+# dist is legacy, ignore if present
+dist/
+
 # Docusaurus cache and generated files
 .docusaurus
 
