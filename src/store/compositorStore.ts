@@ -78,6 +78,7 @@ interface CompositorStore extends AppState {
   duplicateLayer: (layerId: string) => void;
   moveLayer: (layerId: string, deltaX: number, deltaY: number) => void;
   reorderLayer: (layerId: string, direction: 'up' | 'down') => void;
+  reorderSelectedLayers: (direction: 'up' | 'down') => void;
   bringLayerToFront: (layerId: string) => void;
   sendLayerToBack: (layerId: string) => void;
 
@@ -300,6 +301,68 @@ const useCompositorStore = create<CompositorStore>()(
             },
             isDirty: true,
           };
+        });
+      },
+
+      reorderSelectedLayers: (direction: 'up' | 'down') => {
+        set((state) => {
+          if (state.selectedLayerIds.length === 0) return state;
+
+          const zIndices = state.project.layers.map((l) => l.zIndex).sort((a, b) => a - b);
+          const selectedZIndices = state.project.layers
+            .filter((l) => state.selectedLayerIds.includes(l.id))
+            .map((l) => l.zIndex)
+            .sort((a, b) => a - b);
+
+          // Check if we can move in this direction
+          const minSelectedZ = Math.min(...selectedZIndices);
+          const maxSelectedZ = Math.max(...selectedZIndices);
+
+          if (direction === 'up' && maxSelectedZ === zIndices[zIndices.length - 1]) return state;
+          if (direction === 'down' && minSelectedZ === zIndices[0]) return state;
+
+          // Find the target z-index to swap with
+          if (direction === 'up') {
+            const targetZIndex = zIndices.find((z) => z > maxSelectedZ);
+            if (targetZIndex === undefined) return state;
+
+            return {
+              project: {
+                ...state.project,
+                layers: state.project.layers.map((layer) => {
+                  if (state.selectedLayerIds.includes(layer.id)) {
+                    return { ...layer, zIndex: targetZIndex };
+                  }
+                  if (layer.zIndex === targetZIndex) {
+                    return { ...layer, zIndex: maxSelectedZ };
+                  }
+                  return layer;
+                }),
+                modified: new Date().toISOString(),
+              },
+              isDirty: true,
+            };
+          } else {
+            const targetZIndex = [...zIndices].reverse().find((z) => z < minSelectedZ);
+            if (targetZIndex === undefined) return state;
+
+            return {
+              project: {
+                ...state.project,
+                layers: state.project.layers.map((layer) => {
+                  if (state.selectedLayerIds.includes(layer.id)) {
+                    return { ...layer, zIndex: targetZIndex };
+                  }
+                  if (layer.zIndex === targetZIndex) {
+                    return { ...layer, zIndex: minSelectedZ };
+                  }
+                  return layer;
+                }),
+                modified: new Date().toISOString(),
+              },
+              isDirty: true,
+            };
+          }
         });
       },
 

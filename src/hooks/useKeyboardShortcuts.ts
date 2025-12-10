@@ -18,6 +18,7 @@ export function useKeyboardShortcuts() {
   const redo = useCompositorStore((state) => state.redo);
   const copySelectedLayers = useCompositorStore((state) => state.copySelectedLayers);
   const pasteSelectedLayers = useCompositorStore((state) => state.pasteSelectedLayers);
+  const reorderSelectedLayers = useCompositorStore((state) => state.reorderSelectedLayers);
 
   const isPanningRef = useRef(false);
   const panStartXRef = useRef(0);
@@ -89,8 +90,20 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Shift + Up/Down: Reorder selected layers (check BEFORE adding to keysHeld)
+      if (isShift && !isCtrlOrCmd && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+        if (selectedLayerIds.length > 0) {
+          event.preventDefault();
+          const direction = event.key === 'ArrowUp' ? 'up' : 'down';
+          console.log(`[DEBUG] Reorder layers triggered by Shift+${event.key} - moving ${direction}`);
+          reorderSelectedLayers(direction);
+        }
+        return;
+      }
+
       // Arrow keys for nudging (add to held keys for continuous movement)
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      // Only if NOT shift (since shift is for layer reordering)
+      if (!isShift && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
         event.preventDefault();
         keysHeldRef.current.add(event.key);
         if (keysHeldRef.current.has('ShiftLeft') || keysHeldRef.current.has('ShiftRight')) {
@@ -281,6 +294,7 @@ export function useKeyboardShortcuts() {
     redo,
     copySelectedLayers,
     pasteSelectedLayers,
+    reorderSelectedLayers,
   ]);
 }
 
