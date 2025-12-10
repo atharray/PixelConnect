@@ -8,6 +8,9 @@ export interface CanvasConfig {
   width: number;
   height: number;
   backgroundColor: string | null; // Hex color or null for transparent
+  borderColor: string; // Hex color for border
+  borderWidth: number; // Thickness in pixels (expands outward)
+  borderOpacity: number; // 0-1
 }
 
 // Layer representation
@@ -91,6 +94,8 @@ export interface HistoryState {
 export interface UIState {
   activeTool: 'select' | 'pan' | 'zoom';
   showRulers: boolean;
+  showSelectionBorders: boolean;
+  selectionBorderAnimationSpeed: number; // 0 = no movement, 1 = max speed
   clipboardLayers: Layer[];
   isDraggingLayer: boolean;
   dragLayerId: string | null;

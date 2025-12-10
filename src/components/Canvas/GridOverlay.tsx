@@ -29,12 +29,16 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
     const ctx = gridCanvas.getContext('2d');
     if (!ctx) return;
 
-    // Grid should only render at 125% zoom or higher
-    // This allows visibility of grid lines regardless of density setting
-    const minZoomRequired = 125;
+    // Grid renders at all zoom levels with opacity fade
+    // At 200% and above: full opacity (100%)
+    // At 100%: 50% opacity
+    // At 50%: 0% opacity (invisible)
+    // Below 50%: hidden
+    const minZoomForVisibility = 50;
+    const maxZoomForFullOpacity = 200;
 
-    // Only draw if enabled and zoom is high enough
-    if (!gridEnabled || viewport.zoom < minZoomRequired) {
+    // Only draw if enabled and zoom is at least 50%
+    if (!gridEnabled || viewport.zoom < minZoomForVisibility) {
       ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
       return;
     }
@@ -47,8 +51,38 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
 
     ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
 
-    // Configure grid appearance - pure black lines
-    ctx.strokeStyle = '#000000';
+    // Calculate opacity based on zoom level
+    // Keep opacity lower at medium-high zoom to prevent darkening
+    // 50% zoom = 0% opacity (invisible)
+    // 100% zoom = 30% opacity
+    // 200%+ zoom = 40% opacity (not 100% to keep it lighter)
+    let opacity = 0;
+    if (viewport.zoom <= minZoomForVisibility) {
+      opacity = 0;
+    } else if (viewport.zoom < 150) {
+      // Linear interpolation from 0% (at 50% zoom) to 30% (at 150% zoom)
+      opacity = (viewport.zoom - minZoomForVisibility) / (100) * 0.3;
+    } else {
+      // Keep at 40% for higher zoom levels (200%+)
+      opacity = 0.4;
+    }
+
+    // Dynamically increase effective grid density at low zoom levels to prevent overcrowding
+    // This prevents the screen from turning black with dense grids at low zoom
+    let effectiveGridDensity = gridDensity;
+    
+    // At low zoom levels, multiply the grid density to make lines further apart
+    if (zoom < 3) {
+      // At 300% zoom (3x), use 3x the density
+      // At 200% zoom (2x), use 4x the density  
+      // At 100% zoom (1x), use 6x the density
+      // At 50% zoom (0.5x), use 12x the density
+      const densityMultiplier = 9 / (zoom * 3);
+      effectiveGridDensity = gridDensity * densityMultiplier;
+    }
+    
+    // Configure grid appearance - pure black lines with calculated opacity
+    ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
     ctx.lineWidth = 1;
 
     // Calculate the top-left corner of the canvas in screen space
@@ -62,11 +96,11 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
     const worldStartX = canvasCenterWorldX - centerX / zoom + viewport.panX;
     const worldStartY = canvasCenterWorldY - centerY / zoom + viewport.panY;
 
-    // Draw vertical grid lines (every N pixels based on density)
-    const firstX = Math.floor(worldStartX / gridDensity) * gridDensity;
-    const lastX = Math.ceil((worldStartX + gridCanvas.width / zoom) / gridDensity) * gridDensity;
+    // Draw vertical grid lines (every N pixels based on effective density)
+    const firstX = Math.floor(worldStartX / effectiveGridDensity) * effectiveGridDensity;
+    const lastX = Math.ceil((worldStartX + gridCanvas.width / zoom) / effectiveGridDensity) * effectiveGridDensity;
     
-    for (let worldX = firstX; worldX <= lastX; worldX += gridDensity) {
+    for (let worldX = firstX; worldX <= lastX; worldX += effectiveGridDensity) {
       // Calculate screen position and snap to whole pixels
       const screenX = Math.round((worldX - worldStartX) * zoom);
       
@@ -79,11 +113,11 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
       }
     }
 
-    // Draw horizontal grid lines (every N pixels based on density)
-    const firstY = Math.floor(worldStartY / gridDensity) * gridDensity;
-    const lastY = Math.ceil((worldStartY + gridCanvas.height / zoom) / gridDensity) * gridDensity;
+    // Draw horizontal grid lines (every N pixels based on effective density)
+    const firstY = Math.floor(worldStartY / effectiveGridDensity) * effectiveGridDensity;
+    const lastY = Math.ceil((worldStartY + gridCanvas.height / zoom) / effectiveGridDensity) * effectiveGridDensity;
     
-    for (let worldY = firstY; worldY <= lastY; worldY += gridDensity) {
+    for (let worldY = firstY; worldY <= lastY; worldY += effectiveGridDensity) {
       // Calculate screen position and snap to whole pixels
       const screenY = Math.round((worldY - worldStartY) * zoom);
       

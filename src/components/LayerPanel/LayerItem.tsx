@@ -16,6 +16,7 @@ let globalDraggedLayerId: string | null = null;
  */
 function LayerItem({ layer, isSelected }: LayerItemProps) {
   const selectLayer = useCompositorStore((state) => state.selectLayer);
+  const selectLayerRange = useCompositorStore((state) => state.selectLayerRange);
   const updateLayer = useCompositorStore((state) => state.updateLayer);
   const removeLayer = useCompositorStore((state) => state.removeLayer);
   const reorderLayer = useCompositorStore((state) => state.reorderLayer);
@@ -65,8 +66,25 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
 
   const handleSelectLayer = (e: React.MouseEvent) => {
     const multiSelect = e.ctrlKey || e.metaKey;
-    selectLayer(layer.id, multiSelect);
-    console.log(`[DEBUG] Layer selected: ${layer.name} (multiSelect: ${multiSelect})`);
+    const rangeSelect = e.shiftKey;
+    
+    if (rangeSelect && useCompositorStore.getState().selectedLayerIds.length > 0) {
+      // Shift+Click for range selection
+      const lastSelectedId = useCompositorStore.getState().selectedLayerIds[useCompositorStore.getState().selectedLayerIds.length - 1];
+      selectLayerRange(lastSelectedId, layer.id);
+      console.log(`[DEBUG] Layer range selected from ${lastSelectedId} to ${layer.id}`);
+    } else {
+      // Regular or multi-select
+      selectLayer(layer.id, multiSelect);
+      console.log(`[DEBUG] Layer selected: ${layer.name} (multiSelect: ${multiSelect})`);
+    }
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    // Toggle selection with multi-select enabled
+    selectLayer(layer.id, true);
+    console.log(`[DEBUG] Layer toggled via checkbox: ${layer.name}`);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -146,11 +164,8 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
 
   const handleRemoveLayer = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmed = window.confirm(`Remove layer "${layer.name}"?`);
-    if (confirmed) {
-      removeLayer(layer.id);
-      console.log(`[DEBUG] Layer removed: ${layer.name}`);
-    }
+    removeLayer(layer.id);
+    console.log(`[DEBUG] Layer removed: ${layer.name}`);
   };
 
   const handleDuplicateLayer = (e: React.MouseEvent) => {
@@ -179,6 +194,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseUp={handleMouseUp}
+      title="Click to select • Ctrl/Cmd+Click for multi-select • Shift+Click for range select"
       className={`group p-2 rounded border transition-all cursor-pointer select-none ${
         isDragOver ? 'bg-green-900 border-green-400 scale-105' : ''
       } ${
@@ -189,6 +205,17 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
     >
       {/* Layer Header */}
       <div className="flex items-center gap-2 mb-1">
+        {/* Selection Checkbox */}
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={handleCheckboxChange}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="w-4 h-4 flex-shrink-0 cursor-pointer"
+          title="Select/deselect this layer"
+        />
+        
         {/* Thumbnail */}
         <div className="w-8 h-8 flex-shrink-0 bg-canvas-bg border border-gray-600 rounded overflow-hidden">
           <img
@@ -214,19 +241,26 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
               placeholder="Layer name..."
             />
           ) : (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setTempName(layer.name);
-                setIsEditingName(true);
-              }}
-              className="w-full text-left text-xs font-medium truncate hover:underline"
-              title={layer.name}
-            >
+            <span className="text-xs font-medium truncate block" title={layer.name}>
               {layer.name}
-            </button>
+            </span>
           )}
         </div>
+
+        {/* Rename Button */}
+        {!isEditingName && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setTempName(layer.name);
+              setIsEditingName(true);
+            }}
+            className="w-4 h-4 flex items-center justify-center flex-shrink-0 rounded transition-colors hover:bg-gray-600 opacity-0 group-hover:opacity-100"
+            title="Rename layer"
+          >
+            ✏️
+          </button>
+        )}
 
         {/* Visibility Toggle */}
         <button

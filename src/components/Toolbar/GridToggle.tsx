@@ -16,12 +16,12 @@ function GridToggle() {
         onClick={toggleGrid}
         className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
           gridEnabled
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'text-gray-300 hover:text-white bg-panel-bg hover:bg-gray-700'
+            ? 'bg-gray-600 text-white hover:bg-gray-500'
+            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
         }`}
         title="Toggle pixel grid (shows lines between pixels)"
       >
-        #
+        Grid
       </button>
 
       {gridEnabled && (

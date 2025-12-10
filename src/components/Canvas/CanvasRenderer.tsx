@@ -12,6 +12,8 @@ function CanvasRenderer() {
 
   const project = useCompositorStore((state) => state.project);
   const selectedLayerIds = useCompositorStore((state) => state.selectedLayerIds);
+  const showSelectionBorders = useCompositorStore((state) => state.ui.showSelectionBorders);
+  const borderAnimationSpeed = useCompositorStore((state) => state.ui.selectionBorderAnimationSpeed);
   const selectLayer = useCompositorStore((state) => state.selectLayer);
   const deselectAllLayers = useCompositorStore((state) => state.deselectAllLayers);
   const startDraggingLayer = useCompositorStore((state) => state.startDraggingLayer);
@@ -23,6 +25,7 @@ function CanvasRenderer() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
+  const [dashOffset, setDashOffset] = useState(0);
 
   /**
    * Decode base64 image data and cache it
@@ -123,6 +126,21 @@ function CanvasRenderer() {
       console.log(`[DEBUG] Background color applied: ${project.canvas.backgroundColor}`);
     }
 
+    // Draw canvas border (expands outward from canvas edge)
+    if (project.canvas.borderWidth && project.canvas.borderWidth > 0) {
+      const borderWidth = project.canvas.borderWidth;
+      ctx.strokeStyle = project.canvas.borderColor;
+      ctx.globalAlpha = project.canvas.borderOpacity;
+      ctx.lineWidth = borderWidth * 2; // Double width so it expands outward evenly
+      
+      // Offset by half the border width so it expands outward
+      const offset = borderWidth / 2;
+      ctx.strokeRect(offset, offset, canvas.width - borderWidth, canvas.height - borderWidth);
+      
+      ctx.globalAlpha = 1; // Reset alpha
+      console.log(`[DEBUG] Canvas border drawn: ${borderWidth}px ${project.canvas.borderColor}`);
+    }
+
     // Sort layers by z-index for rendering
     const sortedLayers = [...project.layers]
       .filter((layer) => layer.visible)
@@ -153,7 +171,51 @@ function CanvasRenderer() {
       
       console.log(`[DEBUG] Layer rendered: ${layer.name} at (${x}, ${y}) with opacity ${ctx.globalAlpha}`);
     }
-  }, [project, loadedImages]);
+
+    // Draw selection borders for selected layers (marching ants)
+    if (showSelectionBorders) {
+      for (const layer of project.layers) {
+        if (selectedLayerIds.includes(layer.id)) {
+          const x = Math.floor(layer.x);
+          const y = Math.floor(layer.y);
+
+          // Draw marching ants selection border
+          ctx.strokeStyle = '#c0c0c0';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.lineDashOffset = -dashOffset;
+          ctx.strokeRect(x - 0.5, y - 0.5, layer.width + 1, layer.height + 1);
+          ctx.setLineDash([]); // Reset line dash
+          
+          console.log(`[DEBUG] Selection border drawn for: ${layer.name} at (${x}, ${y})`);
+        }
+      }
+    }
+  }, [project, loadedImages, selectedLayerIds, dashOffset, showSelectionBorders]);
+
+  /**
+   * Animate the marching ants effect
+   */
+  useEffect(() => {
+    let animationFrameId: number;
+    
+    const animate = () => {
+      // Base increment is 0.125 (1/4 speed), multiplied by animation speed (0-1)
+      setDashOffset((prev) => (prev + 0.125 * borderAnimationSpeed) % 8);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    // Only animate if borders are enabled, there are selected layers, and speed > 0
+    if (showSelectionBorders && selectedLayerIds.length > 0 && borderAnimationSpeed > 0) {
+      animationFrameId = requestAnimationFrame(animate);
+    }
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [selectedLayerIds, showSelectionBorders, borderAnimationSpeed]);
 
   /**
    * Calculate world coordinates from mouse position
@@ -211,7 +273,7 @@ function CanvasRenderer() {
       return;
     }
 
-    // Left-click (button 0) for layer selection/dragging
+    // Left-click (button 0) for layer selection/dragging or canvas panning
     if (e.button !== 0) {
       console.log(`[DEBUG] Ignoring mouse button ${e.button}`);
       return;
@@ -249,8 +311,11 @@ function CanvasRenderer() {
       }
     }
 
-    console.log('[DEBUG] No layer clicked - deselecting all');
+    // No layer clicked - start panning with left-click instead
+    console.log('[DEBUG] No layer clicked - starting left-click pan');
     deselectAllLayers();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX, y: e.clientY });
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {

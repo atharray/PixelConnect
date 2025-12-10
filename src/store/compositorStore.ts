@@ -26,6 +26,9 @@ const DEFAULT_PROJECT_DATA: ProjectData = {
     width: 2048,
     height: 2048,
     backgroundColor: null, // Transparent by default
+    borderColor: '#000000',
+    borderWidth: 0,
+    borderOpacity: 1,
   },
   viewport: {
     zoom: 100,
@@ -57,6 +60,8 @@ const DEFAULT_HISTORY: HistoryState = {
 const DEFAULT_UI: UIState = {
   activeTool: 'select',
   showRulers: false,
+  showSelectionBorders: true,
+  selectionBorderAnimationSpeed: 1,
   clipboardLayers: [],
   isDraggingLayer: false,
   dragLayerId: null,
@@ -106,6 +111,8 @@ interface CompositorStore extends AppState {
   toggleGrid: () => void;
   setGridDensity: (density: number) => void;
   toggleRulers: () => void;
+  toggleSelectionBorders: () => void;
+  setSelectionBorderAnimationSpeed: (speed: number) => void;
   copySelectedLayers: () => void;
   pasteSelectedLayers: () => void;
 
@@ -668,6 +675,24 @@ const useCompositorStore = create<CompositorStore>()(
             modified: new Date().toISOString(),
           },
           isDirty: true,
+        }));
+      },
+
+      toggleSelectionBorders: () => {
+        set((state) => ({
+          ui: {
+            ...state.ui,
+            showSelectionBorders: !state.ui.showSelectionBorders,
+          },
+        }));
+      },
+
+      setSelectionBorderAnimationSpeed: (speed: number) => {
+        set((state) => ({
+          ui: {
+            ...state.ui,
+            selectionBorderAnimationSpeed: Math.max(0, Math.min(1, speed)),
+          },
         }));
       },
 
