@@ -26,7 +26,7 @@ export function serializeProject(project: ProjectData): string {
  */
 export async function deserializeProject(jsonString: string): Promise<ProjectData> {
   try {
-    console.log('[DEBUG] Parsing project JSON...');
+    // console.log('[DEBUG] Parsing project JSON...');
     const data = JSON.parse(jsonString);
 
     // Validate version exists
@@ -34,7 +34,7 @@ export async function deserializeProject(jsonString: string): Promise<ProjectDat
       throw new Error('Invalid project file: missing version field');
     }
 
-    console.log(`[DEBUG] Project version: ${data.version}`);
+    // console.log(`[DEBUG] Project version: ${data.version}`);
 
     // Check version compatibility
     if (!isVersionCompatible(data.version)) {
@@ -48,13 +48,13 @@ export async function deserializeProject(jsonString: string): Promise<ProjectDat
     // Validate required fields
     validateProjectData(data);
 
-    console.log('[DEBUG] Project validation passed');
+    // console.log('[DEBUG] Project validation passed');
 
     // Validate and load all images
-    console.log(`[DEBUG] Validating ${data.layers.length} image(s)...`);
+    // console.log(`[DEBUG] Validating ${data.layers.length} image(s)...`);
     await validateLayerImages(data.layers);
 
-    console.log('[DEBUG] All images validated successfully');
+    // console.log('[DEBUG] All images validated successfully');
     return data as ProjectData;
   } catch (error) {
     console.error('[DEBUG] Project deserialization failed:', error);
@@ -139,7 +139,7 @@ async function validateLayerImages(layers: any[]): Promise<void> {
 
     try {
       await loadImage(layer.imageData);
-      console.log(`[DEBUG] Layer ${i} image validated: ${layer.name}`);
+      // console.log(`[DEBUG] Layer ${i} image validated: ${layer.name}`);
     } catch (error) {
       throw new Error(`Failed to load image for layer ${i} (${layer.name}): ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

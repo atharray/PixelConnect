@@ -23,14 +23,14 @@ function FileOperations() {
       // Ctrl/Cmd + S: Save project
       if (isCtrlOrCmd && event.key === 's') {
         event.preventDefault();
-        console.log('[DEBUG] Save triggered by Ctrl+S');
+        // console.log('[DEBUG] Save triggered by Ctrl+S');
         handleSaveProject();
       }
 
       // Ctrl/Cmd + O: Load project
       if (isCtrlOrCmd && event.key === 'o') {
         event.preventDefault();
-        console.log('[DEBUG] Load triggered by Ctrl+O');
+        // console.log('[DEBUG] Load triggered by Ctrl+O');
         fileInputRef.current?.click();
       }
     };
@@ -44,7 +44,7 @@ function FileOperations() {
    */
   const handleSaveProject = async () => {
     try {
-      console.log('[DEBUG] Starting project save...');
+      // console.log('[DEBUG] Starting project save...');
       
       const projectJson = serializeProject(project);
       const blob = new Blob([projectJson], { type: 'application/json' });
@@ -58,7 +58,7 @@ function FileOperations() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      console.log(`[DEBUG] Project saved successfully: ${a.download}`);
+      // console.log(`[DEBUG] Project saved successfully: ${a.download}`);
       markClean();
       
       // Show success message
@@ -80,12 +80,12 @@ function FileOperations() {
     }
 
     try {
-      console.log(`[DEBUG] Loading project from file: ${file.name}`);
+      // console.log(`[DEBUG] Loading project from file: ${file.name}`);
       
       const text = await file.text();
       const projectData = await deserializeProject(text);
 
-      console.log('[DEBUG] Project loaded and validated successfully');
+      // console.log('[DEBUG] Project loaded and validated successfully');
       loadProject(projectData);
       markClean();
       
@@ -108,12 +108,12 @@ function FileOperations() {
     if (useCompositorStore.getState().isDirty) {
       const confirmed = window.confirm('You have unsaved changes. Create new project anyway?');
       if (!confirmed) {
-        console.log('[DEBUG] New project cancelled by user');
+        // console.log('[DEBUG] New project cancelled by user');
         return;
       }
     }
     
-    console.log('[DEBUG] Creating new project');
+    // console.log('[DEBUG] Creating new project');
     resetProject();
   };
 
@@ -122,7 +122,7 @@ function FileOperations() {
    */
   const handleExportPNG = async () => {
     try {
-      console.log(`[DEBUG] Exporting canvas as PNG (scale: ${exportScale}x)`);
+      // console.log(`[DEBUG] Exporting canvas as PNG (scale: ${exportScale}x)`);
 
       const blob = await exportCanvasToPNG(
         project.layers,
@@ -141,7 +141,7 @@ function FileOperations() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      console.log(`[DEBUG] PNG exported successfully: ${a.download}`);
+      // console.log(`[DEBUG] PNG exported successfully: ${a.download}`);
       alert(`PNG exported: ${a.download}`);
     } catch (error) {
       console.error('[DEBUG] Export PNG failed:', error);
@@ -199,7 +199,7 @@ function FileOperations() {
               key={scale}
               onClick={() => {
                 setExportScale(scale);
-                console.log(`[DEBUG] Export scale changed to ${scale}x`);
+                // console.log(`[DEBUG] Export scale changed to ${scale}x`);
               }}
               className={`w-full text-left px-2 py-1 text-xs transition-colors ${
                 exportScale === scale

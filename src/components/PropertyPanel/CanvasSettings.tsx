@@ -23,7 +23,7 @@ function CanvasSettings() {
     const width = parseInt(value);
     if (!isNaN(width) && width > 0) {
       setCanvasConfig({ width });
-      console.log(`[DEBUG] Canvas width changed to ${width}`);
+      // console.log(`[DEBUG] Canvas width changed to ${width}`);
     }
   };
 
@@ -31,30 +31,30 @@ function CanvasSettings() {
     const height = parseInt(value);
     if (!isNaN(height) && height > 0) {
       setCanvasConfig({ height });
-      console.log(`[DEBUG] Canvas height changed to ${height}`);
+      // console.log(`[DEBUG] Canvas height changed to ${height}`);
     }
   };
 
   const handleBackgroundColorChange = (value: string) => {
     if (value === 'transparent') {
       setCanvasConfig({ backgroundColor: null });
-      console.log('[DEBUG] Canvas background set to transparent');
+      // console.log('[DEBUG] Canvas background set to transparent');
     } else if (value.startsWith('#')) {
       setCanvasConfig({ backgroundColor: value });
-      console.log(`[DEBUG] Canvas background color changed to ${value}`);
+      // console.log(`[DEBUG] Canvas background color changed to ${value}`);
     }
   };
 
   const handleBorderColorChange = (value: string) => {
     setCanvasConfig({ borderColor: value });
-    console.log(`[DEBUG] Canvas border color changed to ${value}`);
+    // console.log(`[DEBUG] Canvas border color changed to ${value}`);
   };
 
   const handleBorderWidthChange = (value: string) => {
     const width = parseInt(value);
     if (!isNaN(width) && width >= 0) {
       setCanvasConfig({ borderWidth: width });
-      console.log(`[DEBUG] Canvas border width changed to ${width}`);
+      // console.log(`[DEBUG] Canvas border width changed to ${width}`);
     }
   };
 
@@ -62,7 +62,7 @@ function CanvasSettings() {
     const opacity = parseFloat(value);
     if (!isNaN(opacity) && opacity >= 0 && opacity <= 1) {
       setCanvasConfig({ borderOpacity: opacity });
-      console.log(`[DEBUG] Canvas border opacity changed to ${opacity}`);
+      // console.log(`[DEBUG] Canvas border opacity changed to ${opacity}`);
     }
   };
 

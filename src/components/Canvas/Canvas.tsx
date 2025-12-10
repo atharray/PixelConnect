@@ -21,7 +21,7 @@ function Canvas() {
       return;
     }
 
-    console.log(`[DEBUG] Processing ${files.length} image file(s)`);
+    // console.log(`[DEBUG] Processing ${files.length} image file(s)`);
 
     for (const file of Array.from(files)) {
       try {
@@ -32,7 +32,7 @@ function Canvas() {
           continue;
         }
 
-        console.log(`[DEBUG] Loading image: ${file.name} (${file.size} bytes, ${file.type})`);
+        // console.log(`[DEBUG] Loading image: ${file.name} (${file.size} bytes, ${file.type})`);
 
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -53,7 +53,7 @@ function Canvas() {
         const width = img.naturalWidth;
         const height = img.naturalHeight;
 
-        console.log(`[DEBUG] Image loaded: ${file.name} (${width}x${height})`);
+        // console.log(`[DEBUG] Image loaded: ${file.name} (${width}x${height})`);
 
         // Add layer to store
         addLayer({
@@ -69,9 +69,9 @@ function Canvas() {
           height,
         });
 
-        console.log(`[DEBUG] Layer added: ${file.name}`);
+        // console.log(`[DEBUG] Layer added: ${file.name}`);
       } catch (error) {
-        console.error(`[DEBUG] Error loading image ${file.name}:`, error);
+        // console.error(`[DEBUG] Error loading image ${file.name}:`, error);
         alert(`Error loading image ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }

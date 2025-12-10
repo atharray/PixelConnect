@@ -10,12 +10,13 @@ interface PositionInputsProps {
  */
 function PositionInputs({ layer }: PositionInputsProps) {
   const updateLayer = useCompositorStore((state) => state.updateLayer);
+  const pushHistory = useCompositorStore((state) => state.pushHistory);
 
   const handleXChange = (value: string) => {
     const x = parseInt(value);
     if (!isNaN(x)) {
       updateLayer(layer.id, { x });
-      console.log(`[DEBUG] Layer ${layer.name} X position changed to ${x}`);
+      // console.log(`[DEBUG] Layer ${layer.name} X position changed to ${x}`);
     }
   };
 
@@ -23,8 +24,13 @@ function PositionInputs({ layer }: PositionInputsProps) {
     const y = parseInt(value);
     if (!isNaN(y)) {
       updateLayer(layer.id, { y });
-      console.log(`[DEBUG] Layer ${layer.name} Y position changed to ${y}`);
+      // console.log(`[DEBUG] Layer ${layer.name} Y position changed to ${y}`);
     }
+  };
+
+  // Push history when position input loses focus (finalized)
+  const handlePositionFinalized = () => {
+    pushHistory();
   };
 
   return (
@@ -38,6 +44,7 @@ function PositionInputs({ layer }: PositionInputsProps) {
           type="number"
           value={layer.x}
           onChange={(e) => handleXChange(e.target.value)}
+          onBlur={handlePositionFinalized}
           className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
           placeholder="X position"
         />
@@ -50,6 +57,7 @@ function PositionInputs({ layer }: PositionInputsProps) {
           type="number"
           value={layer.y}
           onChange={(e) => handleYChange(e.target.value)}
+          onBlur={handlePositionFinalized}
           className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
           placeholder="Y position"
         />

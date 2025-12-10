@@ -46,9 +46,9 @@ function CanvasRenderer() {
             });
 
             newImages.set(layer.id, img);
-            console.log(`[DEBUG] Image loaded for layer: ${layer.name} (${layer.width}x${layer.height})`);
+            // console.log(`[DEBUG] Image loaded for layer: ${layer.name} (${layer.width}x${layer.height})`);
           } catch (error) {
-            console.error(`[DEBUG] Error loading image for layer ${layer.name}:`, error);
+            // console.error(`[DEBUG] Error loading image for layer ${layer.name}:`, error);
           }
         }
       }
@@ -84,7 +84,7 @@ function CanvasRenderer() {
     const zoomY = (containerHeight / canvasHeight) * 100 * 0.9;
     const zoomToFit = Math.min(zoomX, zoomY, 100); // Don't zoom in, max 100%
 
-    console.log(`[DEBUG] Initializing viewport - zoom to fit: ${zoomToFit.toFixed(1)}%`);
+    // console.log(`[DEBUG] Initializing viewport - zoom to fit: ${zoomToFit.toFixed(1)}%`);
     setViewport({ zoom: Math.max(zoomToFit, 10) }); // Minimum 10% zoom
   }, []); // Empty deps - only run once on mount
 
@@ -114,7 +114,7 @@ function CanvasRenderer() {
     canvas.width = project.canvas.width;
     canvas.height = project.canvas.height;
 
-    console.log(`[DEBUG] Canvas size set to ${canvas.width}x${canvas.height}`);
+    // console.log(`[DEBUG] Canvas size set to ${canvas.width}x${canvas.height}`);
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -123,7 +123,7 @@ function CanvasRenderer() {
     if (project.canvas.backgroundColor) {
       ctx.fillStyle = project.canvas.backgroundColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      console.log(`[DEBUG] Background color applied: ${project.canvas.backgroundColor}`);
+      // console.log(`[DEBUG] Background color applied: ${project.canvas.backgroundColor}`);
     }
 
     // Draw canvas border (expands outward from canvas edge)
@@ -138,7 +138,7 @@ function CanvasRenderer() {
       ctx.strokeRect(offset, offset, canvas.width - borderWidth, canvas.height - borderWidth);
       
       ctx.globalAlpha = 1; // Reset alpha
-      console.log(`[DEBUG] Canvas border drawn: ${borderWidth}px ${project.canvas.borderColor}`);
+      // console.log(`[DEBUG] Canvas border drawn: ${borderWidth}px ${project.canvas.borderColor}`);
     }
 
     // Sort layers by z-index for rendering
@@ -146,7 +146,7 @@ function CanvasRenderer() {
       .filter((layer) => layer.visible)
       .sort((a, b) => a.zIndex - b.zIndex);
 
-    console.log(`[DEBUG] Rendering ${sortedLayers.length} visible layers`);
+    // console.log(`[DEBUG] Rendering ${sortedLayers.length} visible layers`);
 
     // Render each layer
     for (const layer of sortedLayers) {
@@ -156,9 +156,21 @@ function CanvasRenderer() {
         continue;
       }
 
+      // Get the current state for drag offset
+      const state = useCompositorStore.getState();
+      const isDraggingThisLayer = state.ui.isDraggingLayer && 
+        (state.ui.dragLayerId === layer.id || 
+         state.selectedLayerIds.includes(layer.id) && state.selectedLayerIds.includes(state.ui.dragLayerId!));
+
       // Use floor to ensure integer positioning for pixel precision
-      const x = Math.floor(layer.x);
-      const y = Math.floor(layer.y);
+      let x = Math.floor(layer.x);
+      let y = Math.floor(layer.y);
+
+      // Apply drag offset for visual feedback during drag
+      if (isDraggingThisLayer) {
+        x += state.ui.dragOffsetX;
+        y += state.ui.dragOffsetY;
+      }
 
       // Apply opacity
       const prevAlpha = ctx.globalAlpha;
@@ -169,15 +181,27 @@ function CanvasRenderer() {
       // Restore opacity
       ctx.globalAlpha = prevAlpha;
       
-      console.log(`[DEBUG] Layer rendered: ${layer.name} at (${x}, ${y}) with opacity ${ctx.globalAlpha}`);
+      // console.log(`[DEBUG] Layer rendered: ${layer.name} at (${x}, ${y}) with opacity ${ctx.globalAlpha}`);
     }
 
     // Draw selection borders for selected layers (marching ants)
     if (showSelectionBorders) {
+      const state = useCompositorStore.getState();
+      
       for (const layer of project.layers) {
         if (selectedLayerIds.includes(layer.id)) {
-          const x = Math.floor(layer.x);
-          const y = Math.floor(layer.y);
+          const isDraggingThisLayer = state.ui.isDraggingLayer && 
+            (state.ui.dragLayerId === layer.id || 
+             selectedLayerIds.includes(state.ui.dragLayerId!));
+
+          let x = Math.floor(layer.x);
+          let y = Math.floor(layer.y);
+
+          // Apply drag offset for visual feedback during drag
+          if (isDraggingThisLayer) {
+            x += state.ui.dragOffsetX;
+            y += state.ui.dragOffsetY;
+          }
 
           // Draw marching ants selection border
           ctx.strokeStyle = '#c0c0c0';
@@ -187,7 +211,7 @@ function CanvasRenderer() {
           ctx.strokeRect(x - 0.5, y - 0.5, layer.width + 1, layer.height + 1);
           ctx.setLineDash([]); // Reset line dash
           
-          console.log(`[DEBUG] Selection border drawn for: ${layer.name} at (${x}, ${y})`);
+          // console.log(`[DEBUG] Selection border drawn for: ${layer.name} at (${x}, ${y})`);
         }
       }
     }
@@ -257,7 +281,7 @@ function CanvasRenderer() {
    * Handle canvas mouse events for layer dragging and panning
    */
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    console.log('[DEBUG] Canvas mouse down event fired');
+    // console.log('[DEBUG] Canvas mouse down event fired');
     const canvas = canvasRef.current;
     if (!canvas) {
       console.warn('[DEBUG] Canvas ref not available');
@@ -269,13 +293,13 @@ function CanvasRenderer() {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
-      console.log('[DEBUG] Started panning with middle-click');
+      // console.log('[DEBUG] Started panning with middle-click');
       return;
     }
 
     // Left-click (button 0) for layer selection/dragging or canvas panning
     if (e.button !== 0) {
-      console.log(`[DEBUG] Ignoring mouse button ${e.button}`);
+      // console.log(`[DEBUG] Ignoring mouse button ${e.button}`);
       return;
     }
 
@@ -290,7 +314,7 @@ function CanvasRenderer() {
       .filter((layer) => layer.visible)
       .sort((a, b) => b.zIndex - a.zIndex);
 
-    console.log(`[DEBUG] Checking ${sortedLayers.length} layers for click intersection`);
+    // console.log(`[DEBUG] Checking ${sortedLayers.length} layers for click intersection`);
 
     for (const layer of sortedLayers) {
       if (
@@ -299,20 +323,20 @@ function CanvasRenderer() {
         worldY >= layer.y &&
         worldY < layer.y + layer.height
       ) {
-        console.log(`[DEBUG] Layer clicked: ${layer.name} at (${layer.x}, ${layer.y}) size (${layer.width}x${layer.height})`);
+        // console.log(`[DEBUG] Layer clicked: ${layer.name} at (${layer.x}, ${layer.y}) size (${layer.width}x${layer.height})`);
 
         const isMultiSelect = e.ctrlKey || e.metaKey;
         selectLayer(layer.id, isMultiSelect);
         startDraggingLayer(layer.id, worldX, worldY);
-        console.log(`[DEBUG] Started dragging layer: ${layer.name}`);
+        // console.log(`[DEBUG] Started dragging layer: ${layer.name}`);
         return;
       } else {
-        console.log(`[DEBUG] Layer ${layer.name} at (${layer.x}, ${layer.y}) size (${layer.width}x${layer.height}) - no hit`);
+        // console.log(`[DEBUG] Layer ${layer.name} at (${layer.x}, ${layer.y}) size (${layer.width}x${layer.height}) - no hit`);
       }
     }
 
     // No layer clicked - start panning with left-click instead
-    console.log('[DEBUG] No layer clicked - starting left-click pan');
+    // console.log('[DEBUG] No layer clicked - starting left-click pan');
     deselectAllLayers();
     setIsPanning(true);
     setPanStart({ x: e.clientX, y: e.clientY });
@@ -350,7 +374,7 @@ function CanvasRenderer() {
   const handleCanvasMouseUp = () => {
     setIsPanning(false);
     stopDraggingLayer();
-    console.log('[DEBUG] Layer drag ended');
+    // console.log('[DEBUG] Layer drag ended');
   };
 
   const handleCanvasWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -368,7 +392,7 @@ function CanvasRenderer() {
         [...zoomLevels].reverse().find((z) => z < currentZoom) || zoomLevels[0];
     }
 
-    console.log(`[DEBUG] Mouse wheel zoom: ${currentZoom}% -> ${newZoom}%`);
+    // console.log(`[DEBUG] Mouse wheel zoom: ${currentZoom}% -> ${newZoom}%`);
     setViewport({ zoom: newZoom });
   };
 

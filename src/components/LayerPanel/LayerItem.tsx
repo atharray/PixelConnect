@@ -33,7 +33,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (globalDraggedLayerId) {
-        console.log(`[DEBUG] Global drag released`);
+        // console.log(`[DEBUG] Global drag released`);
         globalDraggedLayerId = null;
         setIsDragOver(false);
       }
@@ -49,7 +49,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
       // clientY > window.innerHeight means bottom
       if (e.clientY < 0 || e.clientX < 0 || e.clientX > window.innerWidth || e.clientY > window.innerHeight) {
         if (globalDraggedLayerId) {
-          console.log(`[DEBUG] Mouse left window, canceling drag`);
+          // console.log(`[DEBUG] Mouse left window, canceling drag`);
           globalDraggedLayerId = null;
           setIsDragOver(false);
         }
@@ -72,11 +72,11 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
       // Shift+Click for range selection
       const lastSelectedId = useCompositorStore.getState().selectedLayerIds[useCompositorStore.getState().selectedLayerIds.length - 1];
       selectLayerRange(lastSelectedId, layer.id);
-      console.log(`[DEBUG] Layer range selected from ${lastSelectedId} to ${layer.id}`);
+      // console.log(`[DEBUG] Layer range selected from ${lastSelectedId} to ${layer.id}`);
     } else {
       // Regular or multi-select
       selectLayer(layer.id, multiSelect);
-      console.log(`[DEBUG] Layer selected: ${layer.name} (multiSelect: ${multiSelect})`);
+      // console.log(`[DEBUG] Layer selected: ${layer.name} (multiSelect: ${multiSelect})`);
     }
   };
 
@@ -84,7 +84,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
     e.stopPropagation();
     // Toggle selection with multi-select enabled
     selectLayer(layer.id, true);
-    console.log(`[DEBUG] Layer toggled via checkbox: ${layer.name}`);
+    // console.log(`[DEBUG] Layer toggled via checkbox: ${layer.name}`);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -101,7 +101,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
       selectLayer(layer.id, false);
     }
     
-    console.log(`[DEBUG] Starting drag of layer: ${layer.name}`);
+    // console.log(`[DEBUG] Starting drag of layer: ${layer.name}`);
   };
 
   const handleMouseEnter = () => {
@@ -117,7 +117,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
     const direction = draggedLayer && draggedLayer.zIndex < layer.zIndex ? 'up' : 'down';
     
     reorderLayer(globalDraggedLayerId, direction);
-    console.log(`[DEBUG] Swapped: moved layer ${globalDraggedLayerId} ${direction}`);
+    // console.log(`[DEBUG] Swapped: moved layer ${globalDraggedLayerId} ${direction}`);
   };
 
   const handleMouseLeave = () => {
@@ -126,7 +126,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
 
   const handleMouseUp = () => {
     if (globalDraggedLayerId) {
-      console.log(`[DEBUG] Drag released`);
+      // console.log(`[DEBUG] Drag released`);
       globalDraggedLayerId = null;
     }
   };
@@ -134,19 +134,19 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
   const handleToggleVisibility = (e: React.MouseEvent) => {
     e.stopPropagation();
     updateLayer(layer.id, { visible: !layer.visible });
-    console.log(`[DEBUG] Layer visibility toggled: ${layer.name} -> ${!layer.visible}`);
+    // console.log(`[DEBUG] Layer visibility toggled: ${layer.name} -> ${!layer.visible}`);
   };
 
   const handleToggleLock = (e: React.MouseEvent) => {
     e.stopPropagation();
     updateLayer(layer.id, { locked: !layer.locked });
-    console.log(`[DEBUG] Layer lock toggled: ${layer.name} -> ${!layer.locked}`);
+    // console.log(`[DEBUG] Layer lock toggled: ${layer.name} -> ${!layer.locked}`);
   };
 
   const handleNameSave = () => {
     if (tempName.trim()) {
       updateLayer(layer.id, { name: tempName.trim() });
-      console.log(`[DEBUG] Layer renamed: ${layer.name} -> ${tempName.trim()}`);
+      // console.log(`[DEBUG] Layer renamed: ${layer.name} -> ${tempName.trim()}`);
     } else {
       setTempName(layer.name);
     }
@@ -165,25 +165,25 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
   const handleRemoveLayer = (e: React.MouseEvent) => {
     e.stopPropagation();
     removeLayer(layer.id);
-    console.log(`[DEBUG] Layer removed: ${layer.name}`);
+    // console.log(`[DEBUG] Layer removed: ${layer.name}`);
   };
 
   const handleDuplicateLayer = (e: React.MouseEvent) => {
     e.stopPropagation();
     duplicateLayer(layer.id);
-    console.log(`[DEBUG] Layer duplicated: ${layer.name}`);
+    // console.log(`[DEBUG] Layer duplicated: ${layer.name}`);
   };
 
   const handleBringToFront = (e: React.MouseEvent) => {
     e.stopPropagation();
     bringLayerToFront(layer.id);
-    console.log(`[DEBUG] Layer brought to front: ${layer.name}`);
+    // console.log(`[DEBUG] Layer brought to front: ${layer.name}`);
   };
 
   const handleSendToBack = (e: React.MouseEvent) => {
     e.stopPropagation();
     sendLayerToBack(layer.id);
-    console.log(`[DEBUG] Layer sent to back: ${layer.name}`);
+    // console.log(`[DEBUG] Layer sent to back: ${layer.name}`);
   };
 
   return (

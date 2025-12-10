@@ -11,7 +11,7 @@ function ZoomControls() {
   const ZOOM_LEVELS = [25, 50, 100, 200, 400, 800, 1600];
 
   const handleZoom = (zoomLevel: number) => {
-    console.log(`[DEBUG] Zoom level changed to ${zoomLevel}%`);
+    // console.log(`[DEBUG] Zoom level changed to ${zoomLevel}%`);
     setViewport({ zoom: zoomLevel });
   };
 

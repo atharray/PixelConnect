@@ -67,6 +67,8 @@ const DEFAULT_UI: UIState = {
   dragLayerId: null,
   dragStartX: 0,
   dragStartY: 0,
+  dragOffsetX: 0,
+  dragOffsetY: 0,
 };
 
 interface CompositorStore extends AppState {
@@ -168,6 +170,7 @@ const useCompositorStore = create<CompositorStore>()(
               ...viewport,
             },
           },
+          // Note: NOT marking isDirty or affecting history - viewport is UI state, not project state
         }));
       },
 
@@ -257,22 +260,35 @@ const useCompositorStore = create<CompositorStore>()(
       },
 
       moveLayer: (layerId: string, deltaX: number, deltaY: number) => {
-        set((state) => ({
-          project: {
-            ...state.project,
-            layers: state.project.layers.map((layer) => {
-              if (layer.id === layerId && !layer.locked) {
-                const newX = Math.floor(layer.x + deltaX);
-                const newY = Math.floor(layer.y + deltaY);
+        set((state) => {
+          const currentState = useCompositorStore.getState();
+          const newPast = [...currentState.history.past, currentState.project];
+          if (newPast.length > currentState.history.maxSteps) {
+            newPast.shift();
+          }
 
-                return { ...layer, x: newX, y: newY };
-              }
-              return layer;
-            }),
-            modified: new Date().toISOString(),
-          },
-          isDirty: true,
-        }));
+          return {
+            project: {
+              ...state.project,
+              layers: state.project.layers.map((layer) => {
+                if (layer.id === layerId && !layer.locked) {
+                  const newX = Math.floor(layer.x + deltaX);
+                  const newY = Math.floor(layer.y + deltaY);
+
+                  return { ...layer, x: newX, y: newY };
+                }
+                return layer;
+              }),
+              modified: new Date().toISOString(),
+            },
+            history: {
+              ...currentState.history,
+              past: newPast,
+              future: [],
+            },
+            isDirty: true,
+          };
+        });
       },
 
       reorderLayer: (layerId: string, direction: 'up' | 'down') => {
@@ -513,67 +529,97 @@ const useCompositorStore = create<CompositorStore>()(
 
       updateDragPosition: (currentX: number, currentY: number) => {
         set((state) => {
-          if (!state.ui.isDraggingLayer || !state.ui.dragLayerId) return state;
+          if (!state.ui.isDraggingLayer) return state;
 
-          const deltaX = currentX - state.ui.dragStartX;
-          const deltaY = currentY - state.ui.dragStartY;
+          // Calculate offset from original drag start
+          const offsetX = currentX - state.ui.dragStartX;
+          const offsetY = currentY - state.ui.dragStartY;
 
-          // Move the dragged layer and all selected layers
-          const layersToMove = state.selectedLayerIds.includes(state.ui.dragLayerId)
-            ? state.selectedLayerIds
-            : [state.ui.dragLayerId];
-
+          // Only update UI state - don't modify project.layers during drag
+          // This prevents multiple history entries from rapid mouse movements
           return {
-            project: {
-              ...state.project,
-              layers: state.project.layers.map((layer) => {
-                if (layersToMove.includes(layer.id) && !layer.locked) {
-                  let newX = layer.x + deltaX;
-                  let newY = layer.y + deltaY;
-
-                  // Don't floor during drag - keep float precision for smooth movement at high zoom
-                  // Flooring happens on drag end in stopDraggingLayer
-
-                  return { ...layer, x: newX, y: newY };
-                }
-                return layer;
-              }),
-              modified: new Date().toISOString(),
-            },
             ui: {
               ...state.ui,
-              dragStartX: currentX,
-              dragStartY: currentY,
+              dragOffsetX: offsetX,
+              dragOffsetY: offsetY,
             },
-            isDirty: true,
           };
         });
       },
 
       stopDraggingLayer: () => {
-        set((state) => ({
-          project: {
+        set((state) => {
+          if (!state.ui.isDraggingLayer || !state.ui.dragLayerId) return state;
+
+          // Get the layers to move
+          const layersToMove = state.selectedLayerIds.includes(state.ui.dragLayerId)
+            ? state.selectedLayerIds
+            : [state.ui.dragLayerId];
+
+          // Apply the accumulated drag offset to project layers
+          const offsetX = state.ui.dragOffsetX;
+          const offsetY = state.ui.dragOffsetY;
+
+          // Only push history if layers actually moved
+          const layersActuallyMoved = offsetX !== 0 || offsetY !== 0;
+
+          const newProject = {
             ...state.project,
-            layers: state.project.layers.map((layer) => ({
-              ...layer,
-              x: Math.floor(layer.x),
-              y: Math.floor(layer.y),
-            })),
-          },
-          ui: {
-            ...state.ui,
-            isDraggingLayer: false,
-            dragLayerId: null,
-            dragStartX: 0,
-            dragStartY: 0,
-          },
-        }));
+            layers: state.project.layers.map((layer) => {
+              if (layersToMove.includes(layer.id) && !layer.locked) {
+                return {
+                  ...layer,
+                  x: Math.floor(layer.x + offsetX),
+                  y: Math.floor(layer.y + offsetY),
+                };
+              }
+              return layer;
+            }),
+            modified: new Date().toISOString(),
+          };
+
+          const newState = {
+            project: newProject,
+            ui: {
+              ...state.ui,
+              isDraggingLayer: false,
+              dragLayerId: null,
+              dragOffsetX: 0,
+              dragOffsetY: 0,
+            },
+            isDirty: true,
+          };
+
+          // Push history exactly once if layers moved
+          if (layersActuallyMoved) {
+            const currentState = useCompositorStore.getState();
+            const { viewport, ...projectWithoutViewport } = currentState.project;
+            const newPast = [...currentState.history.past, projectWithoutViewport as ProjectData];
+            if (newPast.length > currentState.history.maxSteps) {
+              newPast.shift();
+            }
+
+            return {
+              ...newState,
+              history: {
+                ...currentState.history,
+                past: newPast,
+                future: [],
+              },
+              _lastHistoryPushAt: Date.now(), // Prevent useAutoHistory from pushing after drag
+            };
+          }
+
+          return newState;
+        });
       },
 
       // History operations
       pushHistory: () => {
         set((state) => {
-          const newPast = [...state.history.past, state.project];
+          // Store project WITHOUT viewport - we'll preserve the current viewport during undo
+          const { viewport, ...projectWithoutViewport } = state.project;
+          const newPast = [...state.history.past, projectWithoutViewport as ProjectData];
           if (newPast.length > state.history.maxSteps) {
             newPast.shift();
           }
@@ -584,6 +630,7 @@ const useCompositorStore = create<CompositorStore>()(
               past: newPast,
               future: [],
             },
+            _lastHistoryPushAt: Date.now(), // Mark when history was manually pushed
           };
         });
       },
@@ -594,15 +641,24 @@ const useCompositorStore = create<CompositorStore>()(
 
           const newPast = [...state.history.past];
           const previousProject = newPast.pop();
-          const newFuture = [state.project, ...state.history.future];
+          
+          if (!previousProject) return state;
+
+          // Add current project to future, but strip viewport like we do in pushHistory
+          const { viewport, ...projectWithoutViewport } = state.project;
+          const newFuture = [projectWithoutViewport as ProjectData, ...state.history.future];
 
           return {
-            project: previousProject || state.project,
+            project: {
+              ...previousProject,
+              viewport: state.project.viewport, // Preserve current viewport
+            },
             history: {
               ...state.history,
               past: newPast,
               future: newFuture,
             },
+            _lastHistoryPushAt: Date.now(), // Prevent useAutoHistory from pushing during undo
           };
         });
       },
@@ -613,15 +669,24 @@ const useCompositorStore = create<CompositorStore>()(
 
           const newFuture = [...state.history.future];
           const nextProject = newFuture.shift();
-          const newPast = [...state.history.past, state.project];
+          
+          // Add current project to past, but strip viewport like we do in pushHistory
+          const { viewport, ...projectWithoutViewport } = state.project;
+          const newPast = [...state.history.past, projectWithoutViewport as ProjectData];
+
+          if (!nextProject) return state;
 
           return {
-            project: nextProject || state.project,
+            project: {
+              ...nextProject,
+              viewport: state.project.viewport, // Preserve current viewport
+            },
             history: {
               ...state.history,
               past: newPast,
               future: newFuture,
             },
+            _lastHistoryPushAt: Date.now(), // Prevent useAutoHistory from pushing during redo
           };
         });
       },

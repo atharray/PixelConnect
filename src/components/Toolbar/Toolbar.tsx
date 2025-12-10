@@ -31,7 +31,7 @@ function Toolbar() {
   const handleNameSave = () => {
     if (tempName.trim()) {
       setProjectName(tempName.trim());
-      console.log(`[DEBUG] Project name updated to: ${tempName.trim()}`);
+      // console.log(`[DEBUG] Project name updated to: ${tempName.trim()}`);
     } else {
       setTempName(project.projectName);
     }

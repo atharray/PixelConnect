@@ -12,12 +12,12 @@ function HistoryControls() {
   const canRedo = history.future.length > 0;
 
   const handleUndo = () => {
-    console.log('[DEBUG] Undo clicked');
+    // console.log('[DEBUG] Undo clicked');
     undo();
   };
 
   const handleRedo = () => {
-    console.log('[DEBUG] Redo clicked');
+    // console.log('[DEBUG] Redo clicked');
     redo();
   };
 

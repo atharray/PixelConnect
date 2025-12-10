@@ -81,6 +81,7 @@ export interface AppState {
   isDirty: boolean;
   history: HistoryState;
   ui: UIState;
+  _lastHistoryPushAt?: number; // Internal: timestamp of last manual history push, used to prevent double-pushing
 }
 
 // History tracking
@@ -101,6 +102,8 @@ export interface UIState {
   dragLayerId: string | null;
   dragStartX: number;
   dragStartY: number;
+  dragOffsetX: number; // Temporary offset during drag - not part of history
+  dragOffsetY: number; // Temporary offset during drag - not part of history
 }
 
 // Linked project format (post-MVP)

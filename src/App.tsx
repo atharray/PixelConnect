@@ -3,9 +3,11 @@ import Canvas from './components/Canvas/Canvas';
 import LayerPanel from './components/LayerPanel/LayerPanel';
 import PropertyPanel from './components/PropertyPanel/PropertyPanel';
 import Toolbar from './components/Toolbar/Toolbar';
+import DebugHistoryModal from './components/DebugMenu/DebugHistoryModal';
 import useCompositorStore from './store/compositorStore';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useAutoHistory from './hooks/useAutoHistory';
+import useDebugMenu from './hooks/useDebugMenu';
 import { useInitializePreferences } from './hooks/useLocalStorage';
 
 /**
@@ -24,6 +26,9 @@ function App() {
 
   // Initialize automatic history tracking
   useAutoHistory();
+
+  // Initialize debug menu
+  const { isOpen: isDebugMenuOpen, setIsOpen: setIsDebugMenuOpen } = useDebugMenu();
 
   // Handle unsaved changes warning
   useEffect(() => {
@@ -69,6 +74,12 @@ function App() {
           <PropertyPanel />
         </div>
       </div>
+
+      {/* Debug History Modal (Ctrl+Shift+D) */}
+      <DebugHistoryModal
+        isOpen={isDebugMenuOpen}
+        onClose={() => setIsDebugMenuOpen(false)}
+      />
     </div>
   );
 }

@@ -13,7 +13,7 @@ function OpacityControl({ layer }: OpacityControlsProps) {
   const handleOpacityChange = (value: number) => {
     const opacity = Math.max(0, Math.min(1, value / 100));
     updateLayer(layer.id, { opacity });
-    console.log(`[DEBUG] Layer opacity changed to ${(opacity * 100).toFixed(1)}%`);
+    // console.log(`[DEBUG] Layer opacity changed to ${(opacity * 100).toFixed(1)}%`);
   };
 
   const opacity = layer.opacity !== undefined ? layer.opacity : 1.0;

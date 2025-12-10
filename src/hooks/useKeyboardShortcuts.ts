@@ -86,7 +86,7 @@ export function useKeyboardShortcuts() {
       if (event.code === 'Space' && !event.repeat) {
         event.preventDefault();
         isPanningRef.current = true;
-        console.log('[DEBUG] Pan mode activated (Spacebar)');
+        // console.log('[DEBUG] Pan mode activated (Spacebar)');
         return;
       }
 
@@ -95,7 +95,7 @@ export function useKeyboardShortcuts() {
         if (selectedLayerIds.length > 0) {
           event.preventDefault();
           const direction = event.key === 'ArrowUp' ? 'up' : 'down';
-          console.log(`[DEBUG] Reorder layers triggered by Shift+${event.key} - moving ${direction}`);
+          // console.log(`[DEBUG] Reorder layers triggered by Shift+${event.key} - moving ${direction}`);
           reorderSelectedLayers(direction);
         }
         return;
@@ -122,7 +122,7 @@ export function useKeyboardShortcuts() {
       // Ctrl/Cmd + Z: Undo
       if (isCtrlOrCmd && event.key === 'z' && !isShift) {
         event.preventDefault();
-        console.log('[DEBUG] Undo triggered by Ctrl+Z');
+        // console.log('[DEBUG] Undo triggered by Ctrl+Z');
         undo();
         return;
       }
@@ -130,7 +130,7 @@ export function useKeyboardShortcuts() {
       // Ctrl/Cmd + Shift + Z: Redo
       if (isCtrlOrCmd && event.key === 'z' && isShift) {
         event.preventDefault();
-        console.log('[DEBUG] Redo triggered by Ctrl+Shift+Z');
+        // console.log('[DEBUG] Redo triggered by Ctrl+Shift+Z');
         redo();
         return;
       }
@@ -143,7 +143,7 @@ export function useKeyboardShortcuts() {
             `Delete ${selectedLayerIds.length} layer${selectedLayerIds.length !== 1 ? 's' : ''}?`
           );
           if (confirmed) {
-            console.log(`[DEBUG] Delete triggered by ${event.key} - removing ${selectedLayerIds.length} layer(s)`);
+            // console.log(`[DEBUG] Delete triggered by ${event.key} - removing ${selectedLayerIds.length} layer(s)`);
             deleteSelectedLayers();
           }
         }
@@ -154,7 +154,7 @@ export function useKeyboardShortcuts() {
       if (isCtrlOrCmd && event.key === 'a') {
         event.preventDefault();
         if (project.layers.length > 0) {
-          console.log('[DEBUG] Select all triggered by Ctrl+A');
+          // console.log('[DEBUG] Select all triggered by Ctrl+A');
           selectAllLayers();
         }
         return;
@@ -163,7 +163,7 @@ export function useKeyboardShortcuts() {
       // Ctrl/Cmd + D: Deselect all layers
       if (isCtrlOrCmd && event.key === 'd') {
         event.preventDefault();
-        console.log('[DEBUG] Deselect all triggered by Ctrl+D');
+        // console.log('[DEBUG] Deselect all triggered by Ctrl+D');
         deselectAllLayers();
         return;
       }
@@ -172,7 +172,7 @@ export function useKeyboardShortcuts() {
       if (isCtrlOrCmd && event.key === 'c') {
         if (selectedLayerIds.length > 0) {
           event.preventDefault();
-          console.log(`[DEBUG] Copy triggered by Ctrl+C - copying ${selectedLayerIds.length} layer(s)`);
+          // console.log(`[DEBUG] Copy triggered by Ctrl+C - copying ${selectedLayerIds.length} layer(s)`);
           copySelectedLayers();
         }
         return;
@@ -183,7 +183,7 @@ export function useKeyboardShortcuts() {
         event.preventDefault();
         const clipboardLayers = useCompositorStore.getState().ui.clipboardLayers;
         if (clipboardLayers.length > 0) {
-          console.log(`[DEBUG] Paste triggered by Ctrl+V - pasting ${clipboardLayers.length} layer(s)`);
+          // console.log(`[DEBUG] Paste triggered by Ctrl+V - pasting ${clipboardLayers.length} layer(s)`);
           pasteSelectedLayers();
         } else {
           console.warn('[DEBUG] Paste triggered but clipboard is empty');
@@ -197,7 +197,7 @@ export function useKeyboardShortcuts() {
         const currentZoom = project.viewport.zoom;
         const zoomLevels = [25, 50, 100, 200, 400, 800, 1600];
         const nextZoom = zoomLevels.find((z) => z > currentZoom) || zoomLevels[zoomLevels.length - 1];
-        console.log(`[DEBUG] Zoom in triggered by + - ${currentZoom}% -> ${nextZoom}%`);
+        // console.log(`[DEBUG] Zoom in triggered by + - ${currentZoom}% -> ${nextZoom}%`);
         setViewport({ zoom: nextZoom });
         return;
       }
@@ -207,7 +207,7 @@ export function useKeyboardShortcuts() {
         const currentZoom = project.viewport.zoom;
         const zoomLevels = [25, 50, 100, 200, 400, 800, 1600];
         const nextZoom = [...zoomLevels].reverse().find((z) => z < currentZoom) || zoomLevels[0];
-        console.log(`[DEBUG] Zoom out triggered by - - ${currentZoom}% -> ${nextZoom}%`);
+        // console.log(`[DEBUG] Zoom out triggered by - - ${currentZoom}% -> ${nextZoom}%`);
         setViewport({ zoom: nextZoom });
         return;
       }
@@ -215,7 +215,7 @@ export function useKeyboardShortcuts() {
       // 0: Reset zoom to 100%
       if (event.key === '0') {
         event.preventDefault();
-        console.log('[DEBUG] Reset zoom triggered by 0 key');
+        // console.log('[DEBUG] Reset zoom triggered by 0 key');
         setViewport({ zoom: 100 });
         return;
       }
@@ -225,7 +225,7 @@ export function useKeyboardShortcuts() {
       // Spacebar: Stop pan mode
       if (event.code === 'Space') {
         isPanningRef.current = false;
-        console.log('[DEBUG] Pan mode deactivated (Spacebar released)');
+        // console.log('[DEBUG] Pan mode deactivated (Spacebar released)');
       }
 
       // Remove from held keys tracking
@@ -245,7 +245,7 @@ export function useKeyboardShortcuts() {
       if (isPanningRef.current) {
         panStartXRef.current = event.clientX;
         panStartYRef.current = event.clientY;
-        console.log('[DEBUG] Pan drag started');
+        // console.log('[DEBUG] Pan drag started');
       }
     };
 
@@ -266,7 +266,7 @@ export function useKeyboardShortcuts() {
         panStartXRef.current = event.clientX;
         panStartYRef.current = event.clientY;
 
-        console.log(`[DEBUG] Panning - delta (${panDeltaX}, ${panDeltaY})`);
+        // console.log(`[DEBUG] Panning - delta (${panDeltaX}, ${panDeltaY})`);
       }
     };
 

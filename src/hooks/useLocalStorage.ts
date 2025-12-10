@@ -91,6 +91,6 @@ export function useInitializePreferences(): void {
       useCompositorStore.getState().setCanvasConfig(canvasUpdates);
     }
     
-    console.log('[DEBUG] Preferences loaded from localStorage');
+    // console.log('[DEBUG] Preferences loaded from localStorage');
   }, []);
 }
