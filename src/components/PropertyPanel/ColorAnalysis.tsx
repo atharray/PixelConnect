@@ -92,7 +92,7 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
     }
   }, [colorsRGBA]);
 
-  const analyzeColors = async (includeAlpha: boolean) => {
+      const analyzeColors = async (includeAlpha: boolean) => {
     setIsAnalyzing(true);
     try {
       const img = new Image();
@@ -111,64 +111,87 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
 
-        // Optimized color counting using Map
-        const colorMap = new Map<string, number>();
+        if (includeAlpha) {
+          // RGBA mode: Count colors with alpha channel
+          const colorMap = new Map<string, number>();
+          let totalPixels = 0;
 
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const a = data[i + 3];
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const a = data[i + 3];
 
-          // Skip fully transparent pixels
-          if (!includeAlpha && a === 0) continue;
+            // Skip fully transparent pixels
+            if (a === 0) continue;
 
-          // Create hex string
-          const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+            totalPixels++;
 
-          // For RGB analysis, deduplicate by ignoring alpha
-          if (!includeAlpha) {
-            colorMap.set(hex, (colorMap.get(hex) || 0) + 1);
-          } else {
-            // For RGBA analysis, include alpha in the key for deduplication
+            // Create hex string with alpha
+            const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
             const hexWithAlpha = `${hex}${a.toString(16).padStart(2, '0').toUpperCase()}`;
             colorMap.set(hexWithAlpha, (colorMap.get(hexWithAlpha) || 0) + 1);
           }
-        }
 
-        // Convert to array and calculate percentages
-        const totalPixels = Math.max(1, data.length / 4);
-        const colors: ColorCount[] = Array.from(colorMap.entries())
-          .map(([colorKey, pixelCount]) => {
-            let hex = colorKey;
-            let alpha = 255;
+          // Convert to array and calculate percentages
+          totalPixels = Math.max(1, totalPixels);
+          const colors: ColorCount[] = Array.from(colorMap.entries())
+            .map(([colorKey, pixelCount]) => {
+              const hex = colorKey.substring(0, 7);
+              const alpha = parseInt(colorKey.substring(7), 16);
 
-            if (includeAlpha && colorKey.length > 7) {
-              hex = colorKey.substring(0, 7);
-              alpha = parseInt(colorKey.substring(7), 16);
-            }
+              return {
+                hex,
+                count: pixelCount,
+                percent: (pixelCount / totalPixels) * 100,
+                hasAlpha: true,
+                alpha,
+              };
+            })
+            .filter(color => {
+              // Filter out fully transparent pixels
+              if (color.hex === '#000000' && color.alpha === 0) {
+                return false;
+              }
+              return true;
+            })
+            .sort((a, b) => b.count - a.count); // Sort by frequency descending
 
-            return {
-              hex,
-              count: pixelCount,
-              percent: (pixelCount / totalPixels) * 100,
-              hasAlpha: includeAlpha,
-              alpha: includeAlpha ? alpha : undefined,
-            };
-          })
-          .filter(color => {
-            // Filter out fully transparent pixels (#00000000)
-            if (includeAlpha && color.hex === '#000000' && color.alpha === 0) {
-              return false;
-            }
-            return true;
-          })
-          .sort((a, b) => b.count - a.count); // Sort by frequency descending
-
-        if (includeAlpha) {
           setColorsRGBA(colors);
           setVisibleColorsRGBA(new Set());
         } else {
+          // RGB mode: Count only fully opaque colors, deduplicate by hex only
+          const colorMap = new Map<string, number>();
+          let totalPixels = 0;
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const a = data[i + 3];
+
+            // Skip any non-fully-opaque pixels (including semi-transparent)
+            if (a !== 255) continue;
+
+            totalPixels++;
+
+            // Create hex string (ignoring alpha)
+            const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+            colorMap.set(hex, (colorMap.get(hex) || 0) + 1);
+          }
+
+          // Convert to array and calculate percentages
+          totalPixels = Math.max(1, totalPixels);
+          const colors: ColorCount[] = Array.from(colorMap.entries())
+            .map(([hex, pixelCount]) => ({
+              hex,
+              count: pixelCount,
+              percent: (pixelCount / totalPixels) * 100,
+              hasAlpha: false,
+              alpha: undefined,
+            }))
+            .sort((a, b) => b.count - a.count); // Sort by frequency descending
+
           setColorsRGB(colors);
           setVisibleColorsRGB(new Set());
         }
@@ -183,9 +206,7 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
+  };  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).catch(() => {
       console.error('Failed to copy to clipboard');
     });
@@ -281,9 +302,9 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
       <button
         onClick={() => analyzeColors(false)}
         disabled={isAnalyzing}
-        className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-xs font-medium text-white rounded transition-colors"
+        className="w-full px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-xs font-medium text-blue-400 rounded transition-colors"
       >
-        {isAnalyzing ? 'Analyzing...' : 'Analyze Colors'}
+        {isAnalyzing ? 'Analyzing...' : 'Analyze Colors (no transparent pixels)'}
       </button>
 
       {/* RGB Results */}
@@ -313,9 +334,9 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
       <button
         onClick={() => analyzeColors(true)}
         disabled={isAnalyzing}
-        className="w-full px-3 py-1 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-xs font-medium text-white rounded transition-colors"
+        className="w-full px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-xs font-medium text-purple-400 rounded transition-colors"
       >
-        {isAnalyzing ? 'Analyzing...' : 'Analyze Colors with Alpha Channel'}
+        {isAnalyzing ? 'Analyzing...' : 'Analyze Colors (with transparent pixels and alpha channel)'}
       </button>
 
       {/* RGBA Results */}
