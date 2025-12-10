@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import useCompositorStore from '../../store/compositorStore';
+import { savePreferences, loadPreferences } from '../../hooks/useLocalStorage';
 
 /**
  * Canvas settings component
@@ -7,6 +9,15 @@ import useCompositorStore from '../../store/compositorStore';
 function CanvasSettings() {
   const canvas = useCompositorStore((state) => state.project.canvas);
   const setCanvasConfig = useCompositorStore((state) => state.setCanvasConfig);
+
+  // Sync canvas border settings to localStorage
+  useEffect(() => {
+    const preferences = loadPreferences();
+    preferences.canvasBorderColor = canvas.borderColor;
+    preferences.canvasBorderWidth = canvas.borderWidth;
+    preferences.canvasBorderOpacity = canvas.borderOpacity;
+    savePreferences(preferences);
+  }, [canvas.borderColor, canvas.borderWidth, canvas.borderOpacity]);
 
   const handleWidthChange = (value: string) => {
     const width = parseInt(value);

@@ -1,84 +1,96 @@
+/**
+ * Custom hook for syncing store state with localStorage
+ * Persists UI preferences and canvas settings across sessions
+ */
+
 import { useEffect } from 'react';
+import useCompositorStore from '../store/compositorStore';
+
+const STORAGE_KEY = 'pixelconnect-preferences';
+
+interface StoredPreferences {
+  // Grid settings
+  gridDensity?: number;
+  gridEnabled?: boolean;
+  
+  // Border settings
+  showSelectionBorders?: boolean;
+  selectionBorderAnimationSpeed?: number;
+  
+  // Canvas border settings
+  canvasBorderColor?: string;
+  canvasBorderWidth?: number;
+  canvasBorderOpacity?: number;
+}
 
 /**
- * Hook for syncing Zustand store state with localStorage
- * Automatically loads persisted state on mount and saves on changes
+ * Load preferences from localStorage
  */
-export function useLocalStorageSync(
-  key: string,
-  getValue: () => any,
-  setValue: (value: any) => void,
-  validate?: (value: any) => boolean
-) {
-  // Load from localStorage on mount
+export function loadPreferences(): StoredPreferences {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.warn('[DEBUG] Failed to load preferences from localStorage:', error);
+  }
+  return {};
+}
+
+/**
+ * Save preferences to localStorage
+ */
+export function savePreferences(preferences: StoredPreferences): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+  } catch (error) {
+    console.warn('[DEBUG] Failed to save preferences to localStorage:', error);
+  }
+}
+
+/**
+ * Hook to initialize preferences on app load
+ */
+export function useInitializePreferences(): void {
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (!validate || validate(parsed)) {
-          setValue(parsed);
-          console.log(`[LocalStorage] Loaded ${key}:`, parsed);
-        }
+    const preferences = loadPreferences();
+    
+    // Apply stored preferences to store
+    if (preferences.gridDensity !== undefined) {
+      useCompositorStore.getState().setGridDensity(preferences.gridDensity);
+    }
+    if (preferences.gridEnabled !== undefined) {
+      const currentGridEnabled = useCompositorStore.getState().project.grid.enabled;
+      if (currentGridEnabled !== preferences.gridEnabled) {
+        useCompositorStore.getState().toggleGrid();
       }
-    } catch (error) {
-      console.error(`[LocalStorage] Failed to load ${key}:`, error);
     }
-  }, [key, setValue, validate]);
-
-  // Save to localStorage whenever value changes
-  useEffect(() => {
-    try {
-      const value = getValue();
-      localStorage.setItem(key, JSON.stringify(value));
-      console.log(`[LocalStorage] Saved ${key}:`, value);
-    } catch (error) {
-      console.error(`[LocalStorage] Failed to save ${key}:`, error);
+    if (preferences.showSelectionBorders !== undefined) {
+      const currentShowBorders = useCompositorStore.getState().ui.showSelectionBorders;
+      if (currentShowBorders !== preferences.showSelectionBorders) {
+        useCompositorStore.getState().toggleSelectionBorders();
+      }
     }
-  }, [key, getValue]);
-}
-
-/**
- * Interface for UI preferences that should be persisted
- */
-export interface UIPreferences {
-  gridEnabled: boolean;
-  gridDensity: number;
-  showSelectionBorders: boolean;
-  selectionBorderAnimationSpeed: number;
-  canvasBorderColor: string;
-  canvasBorderWidth: number;
-  canvasBorderOpacity: number;
-}
-
-/**
- * Get default UI preferences
- */
-export function getDefaultUIPreferences(): UIPreferences {
-  return {
-    gridEnabled: false,
-    gridDensity: 4,
-    showSelectionBorders: true,
-    selectionBorderAnimationSpeed: 1,
-    canvasBorderColor: '#000000',
-    canvasBorderWidth: 0,
-    canvasBorderOpacity: 1,
-  };
-}
-
-/**
- * Validate UI preferences structure
- */
-export function validateUIPreferences(value: any): value is UIPreferences {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof value.gridEnabled === 'boolean' &&
-    typeof value.gridDensity === 'number' &&
-    typeof value.showSelectionBorders === 'boolean' &&
-    typeof value.selectionBorderAnimationSpeed === 'number' &&
-    typeof value.canvasBorderColor === 'string' &&
-    typeof value.canvasBorderWidth === 'number' &&
-    typeof value.canvasBorderOpacity === 'number'
-  );
+    if (preferences.selectionBorderAnimationSpeed !== undefined) {
+      useCompositorStore.getState().setSelectionBorderAnimationSpeed(preferences.selectionBorderAnimationSpeed);
+    }
+    
+    // Apply canvas border settings
+    const canvasUpdates: any = {};
+    if (preferences.canvasBorderColor !== undefined) {
+      canvasUpdates.borderColor = preferences.canvasBorderColor;
+    }
+    if (preferences.canvasBorderWidth !== undefined) {
+      canvasUpdates.borderWidth = preferences.canvasBorderWidth;
+    }
+    if (preferences.canvasBorderOpacity !== undefined) {
+      canvasUpdates.borderOpacity = preferences.canvasBorderOpacity;
+    }
+    if (Object.keys(canvasUpdates).length > 0) {
+      useCompositorStore.getState().setCanvasConfig(canvasUpdates);
+    }
+    
+    console.log('[DEBUG] Preferences loaded from localStorage');
+  }, []);
 }

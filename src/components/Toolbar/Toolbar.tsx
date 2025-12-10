@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useCompositorStore from '../../store/compositorStore';
+import { savePreferences, loadPreferences } from '../../hooks/useLocalStorage';
 import ZoomControls from './ZoomControls';
 import FileOperations from './FileOperations';
 import HistoryControls from './HistoryControls';
@@ -18,6 +19,14 @@ function Toolbar() {
   const setSelectionBorderAnimationSpeed = useCompositorStore((state) => state.setSelectionBorderAnimationSpeed);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(project.projectName);
+
+  // Sync border settings to localStorage
+  useEffect(() => {
+    const preferences = loadPreferences();
+    preferences.showSelectionBorders = showSelectionBorders;
+    preferences.selectionBorderAnimationSpeed = borderAnimationSpeed;
+    savePreferences(preferences);
+  }, [showSelectionBorders, borderAnimationSpeed]);
 
   const handleNameSave = () => {
     if (tempName.trim()) {

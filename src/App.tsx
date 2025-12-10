@@ -6,6 +6,7 @@ import Toolbar from './components/Toolbar/Toolbar';
 import useCompositorStore from './store/compositorStore';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useAutoHistory from './hooks/useAutoHistory';
+import { useInitializePreferences } from './hooks/useLocalStorage';
 
 /**
  * Main application component
@@ -14,6 +15,9 @@ import useAutoHistory from './hooks/useAutoHistory';
 function App() {
   const project = useCompositorStore((state) => state.project);
   const isDirty = useCompositorStore((state) => state.isDirty);
+
+  // Initialize preferences from localStorage
+  useInitializePreferences();
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts();

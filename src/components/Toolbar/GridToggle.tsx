@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import useCompositorStore from '../../store/compositorStore';
+import { savePreferences, loadPreferences } from '../../hooks/useLocalStorage';
 
 /**
  * Grid toggle button component
@@ -9,6 +11,14 @@ function GridToggle() {
   const gridDensity = useCompositorStore((state) => state.project.grid.density);
   const toggleGrid = useCompositorStore((state) => state.toggleGrid);
   const setGridDensity = useCompositorStore((state) => state.setGridDensity);
+
+  // Sync grid settings to localStorage
+  useEffect(() => {
+    const preferences = loadPreferences();
+    preferences.gridEnabled = gridEnabled;
+    preferences.gridDensity = gridDensity;
+    savePreferences(preferences);
+  }, [gridEnabled, gridDensity]);
 
   return (
     <div className="flex items-center gap-1">
