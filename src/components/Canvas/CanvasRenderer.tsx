@@ -305,9 +305,9 @@ function CanvasRenderer() {
 
     const { x: worldX, y: worldY } = getWorldCoordinates(e.clientX, e.clientY);
 
-    console.log(
-      `[DEBUG] Left-click at world (${worldX.toFixed(1)}, ${worldY.toFixed(1)})`
-    );
+    // console.log(
+    //   `[DEBUG] Left-click at world (${worldX.toFixed(1)}, ${worldY.toFixed(1)})`
+    // );
 
     // Find layer at this position (check in reverse order - top layer first)
     const sortedLayers = [...project.layers]
