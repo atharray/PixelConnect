@@ -2,6 +2,7 @@ import useCompositorStore from '../../store/compositorStore';
 import PositionInputs from './PositionInputs';
 import OpacityControl from './OpacityControl';
 import CanvasSettings from './CanvasSettings';
+import ColorAnalysis from './ColorAnalysis';
 
 /**
  * Property panel component
@@ -45,6 +46,9 @@ function PropertyPanel() {
 
             {/* Opacity Controls (if single layer selected) */}
             {selectedLayerIds.length === 1 && selectedLayers.length > 0 && <OpacityControl layer={selectedLayers[0]} />}
+
+            {/* Color Analysis (if single layer selected) */}
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && <ColorAnalysis layer={selectedLayers[0]} />}
 
             {/* Bulk Position Controls (if multiple layers selected) */}
             {selectedLayerIds.length > 1 && <BulkPositionControls />}

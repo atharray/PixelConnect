@@ -35,7 +35,6 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
     // At 50%: 0% opacity (invisible)
     // Below 50%: hidden
     const minZoomForVisibility = 50;
-    const maxZoomForFullOpacity = 200;
 
     // Only draw if enabled and zoom is at least 50%
     if (!gridEnabled || viewport.zoom < minZoomForVisibility) {

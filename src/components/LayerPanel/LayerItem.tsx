@@ -80,7 +80,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCheckboxChange = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     // Toggle selection with multi-select enabled
     selectLayer(layer.id, true);
