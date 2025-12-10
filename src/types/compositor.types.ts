@@ -35,10 +35,7 @@ export interface ViewportState {
 // Grid configuration
 export interface GridConfig {
   enabled: boolean;
-  size: number; // Grid cell size in pixels
-  color: string; // Hex color
-  opacity: number; // 0.0 to 1.0
-  snapToGrid: boolean;
+  density: number; // Only render every Nth grid line (1-8, default 4)
 }
 
 // Ruler configuration
@@ -93,7 +90,6 @@ export interface HistoryState {
 // UI state
 export interface UIState {
   activeTool: 'select' | 'pan' | 'zoom';
-  showGrid: boolean;
   showRulers: boolean;
   clipboardLayers: Layer[];
   isDraggingLayer: boolean;

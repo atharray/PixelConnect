@@ -3,7 +3,7 @@ import useCompositorStore from '../../store/compositorStore';
 import ZoomControls from './ZoomControls';
 import FileOperations from './FileOperations';
 import HistoryControls from './HistoryControls';
-import GridControls from './GridControls';
+import GridToggle from './GridToggle';
 
 /**
  * Top toolbar component
@@ -72,7 +72,7 @@ function Toolbar() {
         <div className="w-px h-6 bg-border"></div>
         <HistoryControls />
         <div className="w-px h-6 bg-border"></div>
-        <GridControls />
+        <GridToggle />
       </div>
 
       {/* Right: Zoom Controls */}

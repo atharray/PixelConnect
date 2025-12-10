@@ -293,7 +293,7 @@ function CanvasRenderer() {
 
     const direction = e.deltaY > 0 ? -1 : 1;
     const currentZoom = project.viewport.zoom;
-    const zoomLevels = [25, 50, 100, 200, 400, 800, 1600];
+    const zoomLevels = [25, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 600, 800, 1200, 1600];
 
     let newZoom = currentZoom;
     if (direction > 0) {
@@ -337,14 +337,17 @@ function CanvasRenderer() {
               imageRendering: 'pixelated',
             }}
           />
-        
-          {/* Grid Overlay */}
-          <GridOverlay
-            canvas={canvasRef.current}
-            gridConfig={project.grid}
-            layers={project.layers}
-          />
         </div>
+
+        {/* Grid Overlay - NOT transformed, stays fixed to viewport */}
+        <GridOverlay
+          canvas={canvasRef.current}
+          gridEnabled={project.grid.enabled}
+          viewport={project.viewport}
+          canvasWidth={project.canvas.width}
+          canvasHeight={project.canvas.height}
+          gridDensity={project.grid.density}
+        />
       </div>
 
       {/* Coordinate Display */}

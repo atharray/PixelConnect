@@ -11,12 +11,10 @@ import {
   Layer, 
   CanvasConfig,
   ViewportState,
-  GridConfig,
   ProjectMetadata,
   HistoryState,
   UIState
 } from '../types/compositor.types';
-import { applyGridSnap } from '../utils/gridUtils';
 
 // Default project configuration
 const DEFAULT_PROJECT_DATA: ProjectData = {
@@ -36,10 +34,7 @@ const DEFAULT_PROJECT_DATA: ProjectData = {
   },
   grid: {
     enabled: false,
-    size: 8,
-    color: '#808080',
-    opacity: 0.3,
-    snapToGrid: false,
+    density: 4,
   },
   rulers: {
     enabled: false,
@@ -61,7 +56,6 @@ const DEFAULT_HISTORY: HistoryState = {
 
 const DEFAULT_UI: UIState = {
   activeTool: 'select',
-  showGrid: false,
   showRulers: false,
   clipboardLayers: [],
   isDraggingLayer: false,
@@ -75,7 +69,6 @@ interface CompositorStore extends AppState {
   setProjectName: (name: string) => void;
   setCanvasConfig: (config: Partial<CanvasConfig>) => void;
   setViewport: (viewport: Partial<ViewportState>) => void;
-  setGridConfig: (config: Partial<GridConfig>) => void;
   setProjectMetadata: (metadata: Partial<ProjectMetadata>) => void;
 
   // Layer operations
@@ -110,8 +103,8 @@ interface CompositorStore extends AppState {
   // UI operations
   setActiveTool: (tool: 'select' | 'pan' | 'zoom') => void;
   toggleGrid: () => void;
+  setGridDensity: (density: number) => void;
   toggleRulers: () => void;
-  setPixelGridEnabled: (enabled: boolean) => void;
   copySelectedLayers: () => void;
   pasteSelectedLayers: () => void;
 
@@ -167,20 +160,6 @@ const useCompositorStore = create<CompositorStore>()(
               ...viewport,
             },
           },
-        }));
-      },
-
-      setGridConfig: (config: Partial<GridConfig>) => {
-        set((state) => ({
-          project: {
-            ...state.project,
-            grid: {
-              ...state.project.grid,
-              ...config,
-            },
-            modified: new Date().toISOString(),
-          },
-          isDirty: true,
         }));
       },
 
@@ -275,16 +254,8 @@ const useCompositorStore = create<CompositorStore>()(
             ...state.project,
             layers: state.project.layers.map((layer) => {
               if (layer.id === layerId && !layer.locked) {
-                let newX = layer.x + deltaX;
-                let newY = layer.y + deltaY;
-
-                // Apply grid snapping if enabled
-                if (state.project.grid.snapToGrid) {
-                  [newX, newY] = applyGridSnap(newX, newY, state.project.grid.size, true);
-                } else {
-                  newX = Math.floor(newX);
-                  newY = Math.floor(newY);
-                }
+                const newX = Math.floor(layer.x + deltaX);
+                const newY = Math.floor(layer.y + deltaY);
 
                 return { ...layer, x: newX, y: newY };
               }
@@ -409,16 +380,8 @@ const useCompositorStore = create<CompositorStore>()(
             ...state.project,
             layers: state.project.layers.map((layer) => {
               if (state.selectedLayerIds.includes(layer.id) && !layer.locked) {
-                let newX = layer.x + deltaX;
-                let newY = layer.y + deltaY;
-
-                // Apply grid snapping if enabled
-                if (state.project.grid.snapToGrid) {
-                  [newX, newY] = applyGridSnap(newX, newY, state.project.grid.size, true);
-                } else {
-                  newX = Math.floor(newX);
-                  newY = Math.floor(newY);
-                }
+                const newX = Math.floor(layer.x + deltaX);
+                const newY = Math.floor(layer.y + deltaY);
 
                 return { ...layer, x: newX, y: newY };
               }
@@ -498,10 +461,6 @@ const useCompositorStore = create<CompositorStore>()(
                   let newX = layer.x + deltaX;
                   let newY = layer.y + deltaY;
 
-                  // Apply grid snapping if enabled
-                  if (state.project.grid.snapToGrid) {
-                    [newX, newY] = applyGridSnap(newX, newY, state.project.grid.size, true);
-                  }
                   // Don't floor during drag - keep float precision for smooth movement at high zoom
                   // Flooring happens on drag end in stopDraggingLayer
 
@@ -621,6 +580,20 @@ const useCompositorStore = create<CompositorStore>()(
         }));
       },
 
+      setGridDensity: (density: number) => {
+        set((state) => ({
+          project: {
+            ...state.project,
+            grid: {
+              ...state.project.grid,
+              density: Math.max(1, Math.min(8, density)),
+            },
+            modified: new Date().toISOString(),
+          },
+          isDirty: true,
+        }));
+      },
+
       toggleRulers: () => {
         set((state) => ({
           project: {
@@ -632,15 +605,6 @@ const useCompositorStore = create<CompositorStore>()(
             modified: new Date().toISOString(),
           },
           isDirty: true,
-        }));
-      },
-
-      setPixelGridEnabled: (enabled: boolean) => {
-        set((state) => ({
-          ui: {
-            ...state.ui,
-            showPixelGrid: enabled,
-          },
         }));
       },
 

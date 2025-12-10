@@ -1,22 +1,27 @@
 /**
  * Grid overlay component
- * Renders a pixel grid on top of the canvas
+ * Renders a 1-pixel photoshop-style grid overlay
+ * Grid is rendered in viewport coordinates, not canvas coordinates
  */
 
 import { useEffect, useRef } from 'react';
-import { GridConfig, Layer } from '../../types/compositor.types';
+import { ViewportState } from '../../types/compositor.types';
 
 interface GridOverlayProps {
   canvas: HTMLCanvasElement | null;
-  gridConfig: GridConfig;
-  layers: Layer[];
+  gridEnabled: boolean;
+  viewport: ViewportState;
+  canvasWidth: number;
+  canvasHeight: number;
+  gridDensity: number;
 }
 
-function GridOverlay({ canvas, gridConfig, layers }: GridOverlayProps) {
+function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight, gridDensity }: GridOverlayProps) {
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!gridCanvasRef.current || !canvas) {
+    if (!gridCanvasRef.current || !canvas || !containerRef.current) {
       return;
     }
 
@@ -24,50 +29,97 @@ function GridOverlay({ canvas, gridConfig, layers }: GridOverlayProps) {
     const ctx = gridCanvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size to match main canvas
-    gridCanvas.width = canvas.width;
-    gridCanvas.height = canvas.height;
+    // Grid should only render at 125% zoom or higher
+    // This allows visibility of grid lines regardless of density setting
+    const minZoomRequired = 125;
+
+    // Only draw if enabled and zoom is high enough
+    if (!gridEnabled || viewport.zoom < minZoomRequired) {
+      ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+      return;
+    }
+
+    const zoom = viewport.zoom / 100;
+    
+    // Set canvas to match visible viewport
+    gridCanvas.width = containerRef.current.clientWidth;
+    gridCanvas.height = containerRef.current.clientHeight;
 
     ctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
 
-    // Draw alignment grid if enabled
-    if (gridConfig.enabled) {
-      ctx.strokeStyle = gridConfig.color;
-      ctx.globalAlpha = gridConfig.opacity;
-      ctx.lineWidth = 1;
+    // Configure grid appearance - pure black lines
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
 
-      const gridSize = gridConfig.size;
+    // Calculate the top-left corner of the canvas in screen space
+    const centerX = gridCanvas.width / 2;
+    const centerY = gridCanvas.height / 2;
+    
+    const canvasCenterWorldX = canvasWidth / 2;
+    const canvasCenterWorldY = canvasHeight / 2;
+    
+    // World coordinates of top-left corner of visible canvas
+    const worldStartX = canvasCenterWorldX - centerX / zoom + viewport.panX;
+    const worldStartY = canvasCenterWorldY - centerY / zoom + viewport.panY;
 
-      // Draw vertical lines
-      for (let x = gridSize; x < canvas.width; x += gridSize) {
+    // Draw vertical grid lines (every N pixels based on density)
+    const firstX = Math.floor(worldStartX / gridDensity) * gridDensity;
+    const lastX = Math.ceil((worldStartX + gridCanvas.width / zoom) / gridDensity) * gridDensity;
+    
+    for (let worldX = firstX; worldX <= lastX; worldX += gridDensity) {
+      // Calculate screen position and snap to whole pixels
+      const screenX = Math.round((worldX - worldStartX) * zoom);
+      
+      // Only draw if within bounds
+      if (screenX >= 0 && screenX <= gridCanvas.width) {
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.moveTo(screenX, 0);
+        ctx.lineTo(screenX, gridCanvas.height);
         ctx.stroke();
       }
-
-      // Draw horizontal lines
-      for (let y = gridSize; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-
-      ctx.globalAlpha = 1;
     }
-  }, [canvas, gridConfig, layers]);
+
+    // Draw horizontal grid lines (every N pixels based on density)
+    const firstY = Math.floor(worldStartY / gridDensity) * gridDensity;
+    const lastY = Math.ceil((worldStartY + gridCanvas.height / zoom) / gridDensity) * gridDensity;
+    
+    for (let worldY = firstY; worldY <= lastY; worldY += gridDensity) {
+      // Calculate screen position and snap to whole pixels
+      const screenY = Math.round((worldY - worldStartY) * zoom);
+      
+      // Only draw if within bounds
+      if (screenY >= 0 && screenY <= gridCanvas.height) {
+        ctx.beginPath();
+        ctx.moveTo(0, screenY);
+        ctx.lineTo(gridCanvas.width, screenY);
+        ctx.stroke();
+      }
+    }
+  }, [gridEnabled, viewport, canvasWidth, canvasHeight, canvas, gridDensity]);
 
   return (
-    <canvas
-      ref={gridCanvasRef}
+    <div
+      ref={containerRef}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
+        width: '100%',
+        height: '100%',
         pointerEvents: 'none',
+        overflow: 'hidden',
       }}
-    />
+    >
+      <canvas
+        ref={gridCanvasRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          imageRendering: 'pixelated',
+        }}
+      />
+    </div>
   );
 }
 
