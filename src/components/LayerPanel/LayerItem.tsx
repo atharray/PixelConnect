@@ -319,8 +319,8 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
           className="flex-1 px-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors flex items-center justify-center"
           title="Bring to front"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h14" />
           </svg>
         </button>
         <button
@@ -328,8 +328,8 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
           className="flex-1 px-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors flex items-center justify-center"
           title="Send to back"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 4l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </button>
         <button
