@@ -320,7 +320,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
           title="Bring to front"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h14" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
           </svg>
         </button>
         <button
@@ -329,7 +329,7 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
           title="Send to back"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 4l4 4m0 0l-4 4m4-4H3" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 9l-5 5m0 0l-5-5m5 5V2" />
           </svg>
         </button>
         <button

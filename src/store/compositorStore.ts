@@ -118,6 +118,9 @@ interface CompositorStore extends AppState {
   copySelectedLayers: () => void;
   pasteSelectedLayers: () => void;
 
+  // Canvas operations
+  cropCanvasToLayers: () => void;
+
   // File operations
   resetProject: () => void;
   loadProject: (projectData: ProjectData) => void;
@@ -795,6 +798,65 @@ const useCompositorStore = create<CompositorStore>()(
               modified: new Date().toISOString(),
             },
             selectedLayerIds: pastedLayers.map((l) => l.id),
+            isDirty: true,
+          };
+        });
+      },
+
+      // Canvas operations
+      cropCanvasToLayers: () => {
+        set((state) => {
+          if (state.project.layers.length === 0) {
+            console.warn('[DEBUG] No layers to crop to');
+            return state;
+          }
+
+          // Calculate the bounding box of all layers
+          let minX = Infinity;
+          let minY = Infinity;
+          let maxX = -Infinity;
+          let maxY = -Infinity;
+
+          state.project.layers.forEach((layer) => {
+            minX = Math.min(minX, layer.x);
+            minY = Math.min(minY, layer.y);
+            maxX = Math.max(maxX, layer.x + layer.width);
+            maxY = Math.max(maxY, layer.y + layer.height);
+          });
+
+          const newWidth = Math.ceil(maxX - minX);
+          const newHeight = Math.ceil(maxY - minY);
+          const offsetX = minX;
+          const offsetY = minY;
+
+          // If no layers or dimensions are invalid, don't change canvas
+          if (newWidth <= 0 || newHeight <= 0) {
+            console.warn('[DEBUG] Invalid bounds for crop');
+            return state;
+          }
+
+          console.log(
+            `[DEBUG] Cropping canvas to layers: ${newWidth}x${newHeight} at offset (${offsetX}, ${offsetY})`
+          );
+
+          // Update canvas dimensions and reposition layers
+          const updatedLayers = state.project.layers.map((layer) => ({
+            ...layer,
+            x: layer.x - offsetX,
+            y: layer.y - offsetY,
+          }));
+
+          return {
+            project: {
+              ...state.project,
+              canvas: {
+                ...state.project.canvas,
+                width: newWidth,
+                height: newHeight,
+              },
+              layers: updatedLayers,
+              modified: new Date().toISOString(),
+            },
             isDirty: true,
           };
         });

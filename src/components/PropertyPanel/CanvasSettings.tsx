@@ -8,7 +8,9 @@ import { savePreferences, loadPreferences } from '../../hooks/useLocalStorage';
  */
 function CanvasSettings() {
   const canvas = useCompositorStore((state) => state.project.canvas);
+  const layers = useCompositorStore((state) => state.project.layers);
   const setCanvasConfig = useCompositorStore((state) => state.setCanvasConfig);
+  const cropCanvasToLayers = useCompositorStore((state) => state.cropCanvasToLayers);
 
   // Sync canvas border settings to localStorage
   useEffect(() => {
@@ -96,6 +98,20 @@ function CanvasSettings() {
           />
         </div>
       </div>
+
+      {/* Crop to Layers Button */}
+      <button
+        onClick={cropCanvasToLayers}
+        disabled={layers.length === 0}
+        className={`w-full px-3 py-2 rounded transition-colors text-xs font-medium ${
+          layers.length === 0
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            : 'bg-slate-700 text-white hover:bg-slate-600'
+        }`}
+        title={layers.length === 0 ? 'Add layers first to crop canvas' : 'Crop canvas to layer bounds'}
+      >
+        Crop Canvas to Layers
+      </button>
 
       {/* Background Color */}
       <div>
