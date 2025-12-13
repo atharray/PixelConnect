@@ -120,7 +120,7 @@ export function useKeyboardShortcuts() {
       }
 
       // Ctrl/Cmd + Z: Undo
-      if (isCtrlOrCmd && event.key === 'z' && !isShift) {
+      if (isCtrlOrCmd && event.key.toLowerCase() === 'z' && !isShift) {
         event.preventDefault();
         // console.log('[DEBUG] Undo triggered by Ctrl+Z');
         undo();
@@ -128,9 +128,17 @@ export function useKeyboardShortcuts() {
       }
 
       // Ctrl/Cmd + Shift + Z: Redo
-      if (isCtrlOrCmd && event.key === 'z' && isShift) {
+      if (isCtrlOrCmd && event.key.toLowerCase() === 'z' && isShift) {
         event.preventDefault();
         // console.log('[DEBUG] Redo triggered by Ctrl+Shift+Z');
+        redo();
+        return;
+      }
+
+      // Ctrl/Cmd + Y: Redo (auxiliary binding)
+      if (isCtrlOrCmd && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        // console.log('[DEBUG] Redo triggered by Ctrl+Y');
         redo();
         return;
       }

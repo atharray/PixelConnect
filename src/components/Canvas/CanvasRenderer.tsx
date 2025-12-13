@@ -446,20 +446,37 @@ function CanvasRenderer() {
                 }
 
                 return (
-                  <rect
-                    key={layer.id}
-                    x={x-0.12}
-                    y={y-0.25}
-                    width={layer.width+0.3}
-                    height={layer.height+0.3}
-                    fill="none"
-                    stroke="#c0c0c0"
-                    strokeWidth="0.25"
-                    strokeDasharray="4,4"
-                    style={{
-                      animation: borderAnimationSpeed > 0 ? `marching-ants ${8 / (0.125 * borderAnimationSpeed) / 1000}s linear infinite` : 'none',
-                    }}
-                  />
+                  <g key={layer.id}>
+                    {/* Light gray stripe */}
+                    <rect
+                      x={x-0.12}
+                      y={y-0.25}
+                      width={layer.width+0.3}
+                      height={layer.height+0.3}
+                      fill="none"
+                      stroke="#b0b0b0"
+                      strokeWidth="0.25"
+                      strokeDasharray="4,4"
+                      style={{
+                        animation: borderAnimationSpeed > 0 ? `marching-ants ${8 / (0.125 * borderAnimationSpeed) / 1000}s linear infinite` : 'none',
+                      }}
+                    />
+                    {/* Dark gray stripe offset */}
+                    <rect
+                      x={x-0.12}
+                      y={y-0.25}
+                      width={layer.width+0.3}
+                      height={layer.height+0.3}
+                      fill="none"
+                      stroke="#505050"
+                      strokeWidth="0.25"
+                      strokeDasharray="4,4"
+                      strokeDashoffset="2"
+                      style={{
+                        animation: borderAnimationSpeed > 0 ? `marching-ants ${8 / (0.125 * borderAnimationSpeed) / 1000}s linear infinite` : 'none',
+                      }}
+                    />
+                  </g>
                 );
               })}
               <style>{`
