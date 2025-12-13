@@ -84,6 +84,7 @@ function CanvasSettings() {
           <option value="1920x1080">1920x1080</option>
           <option value="3840x2160">3840x2160 (4K)</option>
           <option value="4632x2316">4632x2316</option>
+          <option value="2316x4632">2316x4632 (Vertical)</option>
           <option value="3276x3276">3276x3276</option>
         </select>
       </div>
