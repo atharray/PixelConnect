@@ -68,7 +68,6 @@ function CanvasSettings() {
       {/* Collapsible Content */}
       {!isCollapsed && (
         <div className="p-3 space-y-3 bg-gray-850">
-          <div className="text-xs font-semibold text-gray-300">Canvas</div>
 
       {/* Common Sizes Dropdown */}
       <div>
