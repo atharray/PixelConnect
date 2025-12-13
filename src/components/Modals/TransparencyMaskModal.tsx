@@ -60,7 +60,7 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
   };
 
   const handleZoomOut = () => {
-    setZoom((prev) => Math.max(prev - 0.25, 0.5));
+    setZoom((prev) => Math.max(prev - 0.25, 0.1));
   };
 
   const handleResetZoom = () => {
@@ -85,7 +85,7 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleZoomOut}
-                disabled={zoom <= 0.5}
+                disabled={zoom <= 0.1}
                 className="p-1 text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 title="Zoom out"
               >
