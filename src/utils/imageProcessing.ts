@@ -110,10 +110,9 @@ export const applyTransparencyMask = (
               data[i + 3] = 0;
             } else {
               // Else, set data[i + 3] = 255 (make opaque)
-              data[i + 3] = 255;
-
-              // If using template palette, map opaque pixels to nearest opaque color
-              if (useTemplatePalette && opaqueColorPalette && opaqueColorPalette.size > 0) {
+              // If using template palette, map ONLY semi-transparent pixels becoming opaque
+              // Don't touch already-opaque pixels (alpha === 255)
+              if (useTemplatePalette && opaqueColorPalette && opaqueColorPalette.size > 0 && alpha < 255) {
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
@@ -122,6 +121,7 @@ export const applyTransparencyMask = (
                 data[i + 1] = nearest.g;
                 data[i + 2] = nearest.b;
               }
+              data[i + 3] = 255;
             }
           }
 
