@@ -3,6 +3,8 @@ import PositionInputs from './PositionInputs';
 import OpacityControl from './OpacityControl';
 import CanvasSettings from './CanvasSettings';
 import ColorAnalysis from './ColorAnalysis';
+import TransparencyMaskModal from '../Modals/TransparencyMaskModal';
+import { useState } from 'react';
 
 /**
  * Property panel component
@@ -14,6 +16,9 @@ function PropertyPanel() {
   const selectedLayers = project.layers.filter((layer) =>
     selectedLayerIds.includes(layer.id)
   );
+
+  const [isModifyMenuOpen, setIsModifyMenuOpen] = useState(false);
+  const [isTransparencyModalOpen, setIsTransparencyModalOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-canvas-bg overflow-hidden">
@@ -49,6 +54,49 @@ function PropertyPanel() {
 
             {/* Color Analysis (if single layer selected) */}
             {selectedLayerIds.length === 1 && selectedLayers.length > 0 && <ColorAnalysis layer={selectedLayers[0]} />}
+
+            {/* Layer Modification Menu */}
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (
+              <div className="relative">
+                <div className="text-xs font-semibold text-gray-300 mb-2">Actions</div>
+                <button
+                  onClick={() => setIsModifyMenuOpen(!isModifyMenuOpen)}
+                  className="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors flex justify-between items-center"
+                >
+                  <span>Modify...</span>
+                  <span className="text-[10px]">▼</span>
+                </button>
+                
+                {isModifyMenuOpen && (
+                  <div className="absolute left-0 top-full mt-1 w-full bg-panel-bg border border-border rounded shadow-lg z-20">
+                    <button
+                      onClick={() => {
+                        setIsTransparencyModalOpen(true);
+                        setIsModifyMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-slate-700 hover:text-white"
+                    >
+                      Transparency Masking
+                    </button>
+                    <button
+                      disabled
+                      className="w-full text-left px-3 py-2 text-xs text-gray-500 cursor-not-allowed"
+                    >
+                      (TODO)
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modals */}
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (
+              <TransparencyMaskModal 
+                isOpen={isTransparencyModalOpen}
+                onClose={() => setIsTransparencyModalOpen(false)}
+                layer={selectedLayers[0]}
+              />
+            )}
 
             {/* Bulk Position Controls (if multiple layers selected) */}
             {selectedLayerIds.length > 1 && <BulkPositionControls />}
