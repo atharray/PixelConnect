@@ -14,6 +14,10 @@ function CanvasRenderer() {
   const selectedLayerIds = useCompositorStore((state) => state.selectedLayerIds);
   const showSelectionBorders = useCompositorStore((state) => state.ui.showSelectionBorders);
   const borderAnimationSpeed = useCompositorStore((state) => state.ui.selectionBorderAnimationSpeed);
+  const isDraggingLayer = useCompositorStore((state) => state.ui.isDraggingLayer);
+  const dragLayerId = useCompositorStore((state) => state.ui.dragLayerId);
+  const dragOffsetX = useCompositorStore((state) => state.ui.dragOffsetX);
+  const dragOffsetY = useCompositorStore((state) => state.ui.dragOffsetY);
   const selectLayer = useCompositorStore((state) => state.selectLayer);
   const deselectAllLayers = useCompositorStore((state) => state.deselectAllLayers);
   const startDraggingLayer = useCompositorStore((state) => state.startDraggingLayer);
@@ -25,7 +29,6 @@ function CanvasRenderer() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
-  const [dashOffset, setDashOffset] = useState(0);
 
   /**
    * Decode base64 image data and cache it
@@ -183,63 +186,7 @@ function CanvasRenderer() {
       
       // console.log(`[DEBUG] Layer rendered: ${layer.name} at (${x}, ${y}) with opacity ${ctx.globalAlpha}`);
     }
-
-    // Draw selection borders for selected layers (marching ants)
-    if (showSelectionBorders) {
-      const state = useCompositorStore.getState();
-      
-      for (const layer of project.layers) {
-        if (selectedLayerIds.includes(layer.id)) {
-          const isDraggingThisLayer = state.ui.isDraggingLayer && 
-            (state.ui.dragLayerId === layer.id || 
-             selectedLayerIds.includes(state.ui.dragLayerId!));
-
-          let x = Math.floor(layer.x);
-          let y = Math.floor(layer.y);
-
-          // Apply drag offset for visual feedback during drag
-          if (isDraggingThisLayer) {
-            x += state.ui.dragOffsetX;
-            y += state.ui.dragOffsetY;
-          }
-
-          // Draw marching ants selection border
-          ctx.strokeStyle = '#c0c0c0';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 4]);
-          ctx.lineDashOffset = -dashOffset;
-          ctx.strokeRect(x - 0.5, y - 0.5, layer.width + 1, layer.height + 1);
-          ctx.setLineDash([]); // Reset line dash
-          
-          // console.log(`[DEBUG] Selection border drawn for: ${layer.name} at (${x}, ${y})`);
-        }
-      }
-    }
-  }, [project, loadedImages, selectedLayerIds, dashOffset, showSelectionBorders]);
-
-  /**
-   * Animate the marching ants effect
-   */
-  useEffect(() => {
-    let animationFrameId: number;
-    
-    const animate = () => {
-      // Base increment is 0.125 (1/4 speed), multiplied by animation speed (0-1)
-      setDashOffset((prev) => (prev + 0.125 * borderAnimationSpeed) % 8);
-      animationFrameId = requestAnimationFrame(animate);
-    };
-    
-    // Only animate if borders are enabled, there are selected layers, and speed > 0
-    if (showSelectionBorders && selectedLayerIds.length > 0 && borderAnimationSpeed > 0) {
-      animationFrameId = requestAnimationFrame(animate);
-    }
-    
-    return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, [selectedLayerIds, showSelectionBorders, borderAnimationSpeed]);
+  }, [project, loadedImages, isDraggingLayer, dragLayerId, dragOffsetX, dragOffsetY]);
 
   /**
    * Calculate world coordinates from mouse position
@@ -424,8 +371,70 @@ function CanvasRenderer() {
             className="cursor-pointer border border-gray-600"
             style={{
               imageRendering: 'pixelated',
+              backfaceVisibility: 'hidden',
+              WebkitFontSmoothing: 'antialiased',
             }}
           />
+
+          {/* Selection borders overlay - SVG with CSS animation */}
+          {showSelectionBorders && selectedLayerIds.length > 0 && (
+            <svg
+              width={project.canvas.width}
+              height={project.canvas.height}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                pointerEvents: 'none',
+                overflow: 'visible',
+                display: 'block',
+              }}
+            >
+              {project.layers.map((layer) => {
+                if (!selectedLayerIds.includes(layer.id)) return null;
+
+                const isDraggingThisLayer = isDraggingLayer && 
+                  (dragLayerId === layer.id || 
+                   selectedLayerIds.includes(dragLayerId!));
+
+                let x = Math.floor(layer.x);
+                let y = Math.floor(layer.y);
+
+                // Apply drag offset for visual feedback during drag
+                if (isDraggingThisLayer) {
+                  x += dragOffsetX;
+                  y += dragOffsetY;
+                }
+
+                return (
+                  <rect
+                    key={layer.id}
+                    x={x}
+                    y={y}
+                    width={layer.width + 1.1}
+                    height={layer.height + 1.1}
+                    fill="none"
+                    stroke="#c0c0c0"
+                    strokeWidth="1"
+                    strokeDasharray="4,4"
+                    style={{
+                      animation: borderAnimationSpeed > 0 ? `marching-ants ${8 / (0.125 * borderAnimationSpeed) / 1000}s linear infinite` : 'none',
+                    }}
+                  />
+                );
+              })}
+              <style>{`
+                @keyframes marching-ants {
+                  0% {
+                    stroke-dashoffset: 0;
+                  }
+                  100% {
+                    stroke-dashoffset: -8;
+                  }
+                }
+              `}</style>
+            </svg>
+          )}
         </div>
 
         {/* Grid Overlay - NOT transformed, stays fixed to viewport */}

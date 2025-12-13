@@ -11,6 +11,15 @@ interface PositionInputsProps {
 function PositionInputs({ layer }: PositionInputsProps) {
   const updateLayer = useCompositorStore((state) => state.updateLayer);
   const pushHistory = useCompositorStore((state) => state.pushHistory);
+  const isDraggingLayer = useCompositorStore((state) => state.ui.isDraggingLayer);
+  const dragLayerId = useCompositorStore((state) => state.ui.dragLayerId);
+  const dragOffsetX = useCompositorStore((state) => state.ui.dragOffsetX);
+  const dragOffsetY = useCompositorStore((state) => state.ui.dragOffsetY);
+
+  // Show preview position during drag, otherwise show actual position
+  const isDraggingThisLayer = isDraggingLayer && dragLayerId === layer.id;
+  const displayX = isDraggingThisLayer ? Math.floor(layer.x + dragOffsetX) : layer.x;
+  const displayY = isDraggingThisLayer ? Math.floor(layer.y + dragOffsetY) : layer.y;
 
   const handleXChange = (value: string) => {
     const x = parseInt(value);
@@ -42,7 +51,7 @@ function PositionInputs({ layer }: PositionInputsProps) {
         <label className="text-xs text-gray-400 block mb-1">X</label>
         <input
           type="number"
-          value={layer.x}
+          value={displayX}
           onChange={(e) => handleXChange(e.target.value)}
           onBlur={handlePositionFinalized}
           className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
@@ -55,7 +64,7 @@ function PositionInputs({ layer }: PositionInputsProps) {
         <label className="text-xs text-gray-400 block mb-1">Y</label>
         <input
           type="number"
-          value={layer.y}
+          value={displayY}
           onChange={(e) => handleYChange(e.target.value)}
           onBlur={handlePositionFinalized}
           className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"

@@ -61,7 +61,7 @@ const DEFAULT_UI: UIState = {
   activeTool: 'select',
   showRulers: false,
   showSelectionBorders: true,
-  selectionBorderAnimationSpeed: 1,
+  selectionBorderAnimationSpeed: 0.1,
   clipboardLayers: [],
   isDraggingLayer: false,
   dragLayerId: null,
@@ -532,8 +532,12 @@ const useCompositorStore = create<CompositorStore>()(
           if (!state.ui.isDraggingLayer) return state;
 
           // Calculate offset from original drag start
-          const offsetX = currentX - state.ui.dragStartX;
-          const offsetY = currentY - state.ui.dragStartY;
+          let offsetX = currentX - state.ui.dragStartX;
+          let offsetY = currentY - state.ui.dragStartY;
+
+          // Snap to integer pixels for pixel-perfect rendering (no sub-pixel smearing)
+          offsetX = Math.round(offsetX);
+          offsetY = Math.round(offsetY);
 
           // Only update UI state - don't modify project.layers during drag
           // This prevents multiple history entries from rapid mouse movements
