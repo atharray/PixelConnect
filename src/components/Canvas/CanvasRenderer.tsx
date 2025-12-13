@@ -304,7 +304,16 @@ function CanvasRenderer() {
         // console.log(`[DEBUG] Layer clicked: ${layer.name} at (${layer.x}, ${layer.y}) size (${layer.width}x${layer.height})`);
 
         const isMultiSelect = e.ctrlKey || e.metaKey;
-        selectLayer(layer.id, isMultiSelect);
+        
+        // If clicking a layer that's already selected (without Ctrl), keep other selections
+        // This allows multi-layer dragging by dragging any selected layer
+        const isAlreadySelected = selectedLayerIds.includes(layer.id);
+        const shouldKeepSelection = isAlreadySelected && !isMultiSelect;
+        
+        if (!shouldKeepSelection) {
+          selectLayer(layer.id, isMultiSelect);
+        }
+        
         startDraggingLayer(layer.id, worldX, worldY);
         // console.log(`[DEBUG] Started dragging layer: ${layer.name}`);
         return;
