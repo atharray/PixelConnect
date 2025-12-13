@@ -134,19 +134,28 @@ function CanvasRenderer() {
     // Draw checkered background for transparency
     if (project.canvas.showCheckeredBackground && !project.canvas.backgroundColor) {
       const zoom = project.viewport.zoom / 100;
-      // Scale checkerboard size based on zoom: smaller when zoomed out, larger when zoomed in
-      const baseSquareSize = 8;
-      const squareSize = Math.max(1, Math.round(baseSquareSize / zoom));
+      // Use a fixed pattern size (in pixels) that scales with zoom for consistent appearance
+      const patternSize = 8;
       
-      const lightColor = '#ffffff';
-      const darkColor = '#cccccc';
+      // Create an off-screen canvas for the pattern
+      const patternCanvas = document.createElement('canvas');
+      patternCanvas.width = patternSize * 2;
+      patternCanvas.height = patternSize * 2;
+      const patternCtx = patternCanvas.getContext('2d');
       
-      for (let y = 0; y < canvas.height; y += squareSize) {
-        for (let x = 0; x < canvas.width; x += squareSize) {
-          // Alternate colors in a checkerboard pattern
-          const isEven = (Math.floor(x / squareSize) + Math.floor(y / squareSize)) % 2 === 0;
-          ctx.fillStyle = isEven ? lightColor : darkColor;
-          ctx.fillRect(x, y, squareSize, squareSize);
+      if (patternCtx) {
+        // Draw checkerboard pattern on small canvas
+        patternCtx.fillStyle = '#ffffff';
+        patternCtx.fillRect(0, 0, patternSize * 2, patternSize * 2);
+        patternCtx.fillStyle = '#cccccc';
+        patternCtx.fillRect(0, 0, patternSize, patternSize);
+        patternCtx.fillRect(patternSize, patternSize, patternSize, patternSize);
+        
+        // Use the pattern to fill the entire canvas
+        const pattern = ctx.createPattern(patternCanvas, 'repeat');
+        if (pattern) {
+          ctx.fillStyle = pattern;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
       }
     }
