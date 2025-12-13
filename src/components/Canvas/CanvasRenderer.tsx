@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import GridOverlay from './GridOverlay';
+import DragInfoTooltip from './DragInfoTooltip';
 
 /**
  * Canvas renderer component
@@ -29,6 +30,7 @@ function CanvasRenderer() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   /**
    * Decode base64 image data and cache it
@@ -127,6 +129,26 @@ function CanvasRenderer() {
       ctx.fillStyle = project.canvas.backgroundColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       // console.log(`[DEBUG] Background color applied: ${project.canvas.backgroundColor}`);
+    }
+
+    // Draw checkered background for transparency
+    if (project.canvas.showCheckeredBackground && !project.canvas.backgroundColor) {
+      const zoom = project.viewport.zoom / 100;
+      // Scale checkerboard size based on zoom: smaller when zoomed out, larger when zoomed in
+      const baseSquareSize = 8;
+      const squareSize = Math.max(1, Math.round(baseSquareSize / zoom));
+      
+      const lightColor = '#ffffff';
+      const darkColor = '#cccccc';
+      
+      for (let y = 0; y < canvas.height; y += squareSize) {
+        for (let x = 0; x < canvas.width; x += squareSize) {
+          // Alternate colors in a checkerboard pattern
+          const isEven = (Math.floor(x / squareSize) + Math.floor(y / squareSize)) % 2 === 0;
+          ctx.fillStyle = isEven ? lightColor : darkColor;
+          ctx.fillRect(x, y, squareSize, squareSize);
+        }
+      }
     }
 
     // Draw canvas border (expands outward from canvas edge)
@@ -293,6 +315,9 @@ function CanvasRenderer() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Track mouse position for drag tooltip
+    setMousePos({ x: e.clientX, y: e.clientY });
+
     const { x: worldX, y: worldY } = getWorldCoordinates(e.clientX, e.clientY);
 
     // Update hover coordinates
@@ -329,7 +354,7 @@ function CanvasRenderer() {
 
     const direction = e.deltaY > 0 ? -1 : 1;
     const currentZoom = project.viewport.zoom;
-    const zoomLevels = [25, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 600, 800, 1200, 1600];
+    const zoomLevels = [25, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 600, 800, 1200, 1600, 3200];
 
     let newZoom = currentZoom;
     if (direction > 0) {
@@ -346,8 +371,13 @@ function CanvasRenderer() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-canvas-bg overflow-hidden"
+      className="relative w-full h-full bg-canvas-bg overflow-hidden cursor-crosshair"
       style={{ paddingTop: '20px', paddingLeft: '20px' }}
+      onMouseDown={handleCanvasMouseDown}
+      onMouseMove={handleCanvasMouseMove}
+      onMouseUp={handleCanvasMouseUp}
+      onMouseLeave={handleCanvasMouseUp}
+      onWheel={handleCanvasWheel}
     >
       {/* Canvas container with centering and scrollbars */}
       <div
@@ -363,16 +393,16 @@ function CanvasRenderer() {
         >
           <canvas
             ref={canvasRef}
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
-            onWheel={handleCanvasWheel}
-            className="cursor-pointer border border-gray-600"
+            className="cursor-pointer"
             style={{
               imageRendering: 'pixelated',
               backfaceVisibility: 'hidden',
               WebkitFontSmoothing: 'antialiased',
+              outline: project.canvas.borderEnabled ? '1px solid rgb(75, 85, 99)' : 'none',
+              outlineOffset: '0px',
+              boxShadow: project.canvas.shadowIntensity > 0 
+                ? `0 10px 40px rgba(0, 0, 0, ${0.5 * project.canvas.shadowIntensity})`
+                : 'none',
             }}
           />
 
@@ -409,13 +439,13 @@ function CanvasRenderer() {
                 return (
                   <rect
                     key={layer.id}
-                    x={x}
-                    y={y}
-                    width={layer.width + 1.1}
-                    height={layer.height + 1.1}
+                    x={x-0.12}
+                    y={y-0.25}
+                    width={layer.width+0.3}
+                    height={layer.height+0.3}
                     fill="none"
                     stroke="#c0c0c0"
-                    strokeWidth="1"
+                    strokeWidth="0.25"
                     strokeDasharray="4,4"
                     style={{
                       animation: borderAnimationSpeed > 0 ? `marching-ants ${8 / (0.125 * borderAnimationSpeed) / 1000}s linear infinite` : 'none',
@@ -445,6 +475,7 @@ function CanvasRenderer() {
           canvasWidth={project.canvas.width}
           canvasHeight={project.canvas.height}
           gridDensity={project.grid.density}
+          canvasBorderEnabled={project.canvas.borderEnabled}
         />
       </div>
 
@@ -462,6 +493,16 @@ function CanvasRenderer() {
         <div className="absolute top-4 right-4 bg-panel-bg border border-blue-600 rounded px-3 py-2 text-xs text-blue-400">
           Selected: {selectedLayerIds.length} layer{selectedLayerIds.length !== 1 ? 's' : ''}
         </div>
+      )}
+
+      {/* Drag Info Tooltip */}
+      {isDraggingLayer && project.canvas.dragInfoEnabled && (
+        <DragInfoTooltip
+          offsetX={dragOffsetX}
+          offsetY={dragOffsetY}
+          mouseX={mousePos.x}
+          mouseY={mousePos.y}
+        />
       )}
     </div>
   );

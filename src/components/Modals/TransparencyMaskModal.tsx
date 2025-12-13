@@ -127,11 +127,7 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
             {previewImage ? (
               <div 
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: '100%',
-                  minHeight: '100%',
+                  display: 'inline-block',
                   padding: '10px',
                 }}
               >

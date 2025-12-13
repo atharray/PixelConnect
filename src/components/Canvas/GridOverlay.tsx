@@ -14,9 +14,10 @@ interface GridOverlayProps {
   canvasWidth: number;
   canvasHeight: number;
   gridDensity: number;
+  canvasBorderEnabled: boolean;
 }
 
-function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight, gridDensity }: GridOverlayProps) {
+function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight, gridDensity, canvasBorderEnabled }: GridOverlayProps) {
   const gridCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -84,6 +85,29 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
     ctx.strokeStyle = `rgba(0, 0, 0, ${opacity})`;
     ctx.lineWidth = 1;
 
+    // Get canvas bounds in screen space and set up clipping
+    const canvasRect = canvas.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    
+    // Calculate canvas position relative to grid container
+    let canvasScreenX = canvasRect.left - containerRect.left;
+    let canvasScreenY = canvasRect.top - containerRect.top;
+    let canvasScreenWidth = canvasRect.width;
+    let canvasScreenHeight = canvasRect.height;
+    
+    // Inset clipping region by border width to avoid rendering on the border
+    const borderInset = canvasBorderEnabled ? 1 : 0;
+    canvasScreenX += borderInset;
+    canvasScreenY += borderInset;
+    canvasScreenWidth -= borderInset * 2;
+    canvasScreenHeight -= borderInset * 2;
+    
+    // Set up clipping region to only render within canvas bounds (excluding border)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(canvasScreenX, canvasScreenY, canvasScreenWidth, canvasScreenHeight);
+    ctx.clip();
+
     // Calculate the top-left corner of the canvas in screen space
     const centerX = gridCanvas.width / 2;
     const centerY = gridCanvas.height / 2;
@@ -91,9 +115,13 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
     const canvasCenterWorldX = canvasWidth / 2;
     const canvasCenterWorldY = canvasHeight / 2;
     
+    // Optional padding on grid alignment
+    const paddingLeft = 0;
+    const paddingTop = 0;
+    
     // World coordinates of top-left corner of visible canvas
-    const worldStartX = canvasCenterWorldX - centerX / zoom + viewport.panX;
-    const worldStartY = canvasCenterWorldY - centerY / zoom + viewport.panY;
+    const worldStartX = canvasCenterWorldX - (centerX - paddingLeft) / zoom + viewport.panX;
+    const worldStartY = canvasCenterWorldY - (centerY - paddingTop) / zoom + viewport.panY;
 
     // Draw vertical grid lines (every N pixels based on effective density)
     const firstX = Math.floor(worldStartX / effectiveGridDensity) * effectiveGridDensity;
@@ -128,7 +156,10 @@ function GridOverlay({ canvas, gridEnabled, viewport, canvasWidth, canvasHeight,
         ctx.stroke();
       }
     }
-  }, [gridEnabled, viewport, canvasWidth, canvasHeight, canvas, gridDensity]);
+    
+    // Restore context to remove clipping
+    ctx.restore();
+  }, [gridEnabled, viewport, canvasWidth, canvasHeight, canvas, gridDensity, canvasBorderEnabled]);
 
   return (
     <div

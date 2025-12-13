@@ -23,12 +23,16 @@ const DEFAULT_PROJECT_DATA: ProjectData = {
   created: new Date().toISOString(),
   modified: new Date().toISOString(),
   canvas: {
-    width: 2048,
-    height: 2048,
+    width: 3276,
+    height: 3276,
     backgroundColor: null, // Transparent by default
     borderColor: '#000000',
     borderWidth: 0,
     borderOpacity: 1,
+    borderEnabled: true,
+    shadowIntensity: 0.5,
+    showCheckeredBackground: false,
+    dragInfoEnabled: true,
   },
   viewport: {
     zoom: 100,

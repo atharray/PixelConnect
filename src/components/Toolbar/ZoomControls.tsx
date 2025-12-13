@@ -8,7 +8,7 @@ function ZoomControls() {
   const viewport = useCompositorStore((state) => state.project.viewport);
   const setViewport = useCompositorStore((state) => state.setViewport);
 
-  const ZOOM_LEVELS = [25, 50, 100, 200, 400, 800, 1600];
+  const ZOOM_LEVELS = [25, 50, 100, 200, 400, 800, 1600, 3200];
 
   const handleZoom = (zoomLevel: number) => {
     // console.log(`[DEBUG] Zoom level changed to ${zoomLevel}%`);

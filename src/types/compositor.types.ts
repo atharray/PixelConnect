@@ -11,7 +11,12 @@ export interface CanvasConfig {
   borderColor: string; // Hex color for border
   borderWidth: number; // Thickness in pixels (expands outward)
   borderOpacity: number; // 0-1
+  borderEnabled: boolean; // Whether to show the border
+  shadowIntensity: number; // 0-1, shadow opacity/intensity
+  showCheckeredBackground: boolean; // Show checkerboard pattern for transparency
+  dragInfoEnabled: boolean; // Show drag translation info when dragging layers
 }
+
 
 // Layer representation
 export interface Layer {

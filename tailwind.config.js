@@ -7,9 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        'canvas-bg': '#1a1a1a',
-        'panel-bg': '#2a2a2a',
-        'border': '#3a3a3a',
+        'canvas-bg': '#282c34',
+        'panel-bg': '#36393f',
+        'border': '#44474d',
+        'gray-850': '#3a3f47',
       },
     },
   },

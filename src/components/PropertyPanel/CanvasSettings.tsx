@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import { savePreferences, loadPreferences } from '../../hooks/useLocalStorage';
 
@@ -11,15 +11,15 @@ function CanvasSettings() {
   const layers = useCompositorStore((state) => state.project.layers);
   const setCanvasConfig = useCompositorStore((state) => state.setCanvasConfig);
   const cropCanvasToLayers = useCompositorStore((state) => state.cropCanvasToLayers);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Sync canvas border settings to localStorage
+  // Sync canvas settings to localStorage
   useEffect(() => {
     const preferences = loadPreferences();
-    preferences.canvasBorderColor = canvas.borderColor;
-    preferences.canvasBorderWidth = canvas.borderWidth;
-    preferences.canvasBorderOpacity = canvas.borderOpacity;
+    preferences.canvasBorderEnabled = canvas.borderEnabled;
+    preferences.canvasShadowIntensity = canvas.shadowIntensity;
     savePreferences(preferences);
-  }, [canvas.borderColor, canvas.borderWidth, canvas.borderOpacity]);
+  }, [canvas.borderEnabled, canvas.shadowIntensity]);
 
   const handleWidthChange = (value: string) => {
     const width = parseInt(value);
@@ -47,30 +47,46 @@ function CanvasSettings() {
     }
   };
 
-  const handleBorderColorChange = (value: string) => {
-    setCanvasConfig({ borderColor: value });
-    // console.log(`[DEBUG] Canvas border color changed to ${value}`);
-  };
-
-  const handleBorderWidthChange = (value: string) => {
-    const width = parseInt(value);
-    if (!isNaN(width) && width >= 0) {
-      setCanvasConfig({ borderWidth: width });
-      // console.log(`[DEBUG] Canvas border width changed to ${width}`);
-    }
-  };
-
-  const handleBorderOpacityChange = (value: string) => {
-    const opacity = parseFloat(value);
-    if (!isNaN(opacity) && opacity >= 0 && opacity <= 1) {
-      setCanvasConfig({ borderOpacity: opacity });
-      // console.log(`[DEBUG] Canvas border opacity changed to ${opacity}`);
+  const handleCommonSizeChange = (size: string) => {
+    const [w, h] = size.split('x').map(Number);
+    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+      setCanvasConfig({ width: w, height: h });
     }
   };
 
   return (
-    <div className="p-3 space-y-3">
-      <div className="text-xs font-semibold text-gray-300">Canvas</div>
+    <div className="border-t border-border bg-gray-850">
+      {/* Collapsible Header */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-300 hover:bg-gray-800 transition-colors group"
+      >
+        <span>Canvas</span>
+        <span className={`text-gray-400 transition-transform group-hover:drop-shadow-lg group-hover:text-gray-200 ${isCollapsed ? '' : 'rotate-180'}`}>▼</span>
+      </button>
+
+      {/* Collapsible Content */}
+      {!isCollapsed && (
+        <div className="p-3 space-y-3 bg-gray-850">
+          <div className="text-xs font-semibold text-gray-300">Canvas</div>
+
+      {/* Common Sizes Dropdown */}
+      <div>
+        <label className="text-xs text-gray-400 block mb-1">Common Sizes</label>
+        <select
+          onChange={(e) => handleCommonSizeChange(e.target.value)}
+          className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+          defaultValue=""
+        >
+          <option value="">Select a size...</option>
+          <option value="1024x1024">1024x1024</option>
+          <option value="2048x2048">2048x2048</option>
+          <option value="1920x1080">1920x1080</option>
+          <option value="3840x2160">3840x2160 (4K)</option>
+          <option value="4632x2316">4632x2316</option>
+          <option value="3276x3276">3276x3276</option>
+        </select>
+      </div>
 
       {/* Canvas Size */}
       <div className="grid grid-cols-2 gap-2">
@@ -142,46 +158,79 @@ function CanvasSettings() {
       <div className="space-y-2 pt-2 border-t border-border">
         <div className="text-xs font-semibold text-gray-300">Border</div>
         
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs text-gray-400 block mb-1">Color</label>
-            <input
-              type="color"
-              value={canvas.borderColor || '#000000'}
-              onChange={(e) => handleBorderColorChange(e.target.value)}
-              className="w-full h-8 rounded cursor-pointer border border-border"
-              title="Pick border color"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-gray-400 block mb-1">Width (px)</label>
-            <input
-              type="number"
-              value={canvas.borderWidth || 0}
-              onChange={(e) => handleBorderWidthChange(e.target.value)}
-              min={0}
-              max={100}
-              className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-              placeholder="0"
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="borderEnabled"
+            checked={canvas.borderEnabled ?? true}
+            onChange={(e) => setCanvasConfig({ borderEnabled: e.target.checked })}
+            className="w-4 h-4 rounded cursor-pointer"
+            title="Enable or disable canvas border"
+          />
+          <label htmlFor="borderEnabled" className="text-xs text-gray-400 cursor-pointer flex-1">
+            Show Border
+          </label>
         </div>
+      </div>
 
+      {/* Shadow Settings */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="text-xs font-semibold text-gray-300">Shadow</div>
+        
         <div>
-          <label className="text-xs text-gray-400 block mb-1">Opacity</label>
+          <label className="text-xs text-gray-400 block mb-1">Intensity</label>
           <input
             type="range"
             min="0"
             max="1"
             step="0.1"
-            value={canvas.borderOpacity || 1}
-            onChange={(e) => handleBorderOpacityChange(e.target.value)}
+            value={canvas.shadowIntensity ?? 0.5}
+            onChange={(e) => setCanvasConfig({ shadowIntensity: parseFloat(e.target.value) })}
             className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-            title="Border opacity (0 = transparent, 1 = opaque)"
+            title="Shadow intensity (0 = off, 1 = max)"
           />
+          <div className="text-xs text-gray-500 mt-1">
+            {Math.round((canvas.shadowIntensity ?? 0.5) * 100)}%
+          </div>
         </div>
       </div>
+
+      {/* Checkered Background */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="checkerboardBg"
+            checked={canvas.showCheckeredBackground ?? false}
+            onChange={(e) => setCanvasConfig({ showCheckeredBackground: e.target.checked })}
+            disabled={canvas.backgroundColor !== null}
+            className="w-4 h-4 rounded cursor-pointer disabled:opacity-50"
+            title="Show checkered pattern for transparency (only available when background is transparent)"
+          />
+          <label htmlFor="checkerboardBg" className={`text-xs cursor-pointer flex-1 ${canvas.backgroundColor !== null ? 'text-gray-600' : 'text-gray-400'}`}>
+            Checkered Background
+          </label>
+        </div>
+      </div>
+
+      {/* Drag Info */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="dragInfoEnabled"
+            checked={canvas.dragInfoEnabled ?? true}
+            onChange={(e) => setCanvasConfig({ dragInfoEnabled: e.target.checked })}
+            className="w-4 h-4 rounded cursor-pointer"
+            title="Show drag translation info when dragging layers"
+          />
+          <label htmlFor="dragInfoEnabled" className="text-xs text-gray-400 cursor-pointer flex-1">
+            Show Drag Info
+          </label>
+        </div>
+      </div>
+        </div>
+      )}
     </div>
   );
 }
