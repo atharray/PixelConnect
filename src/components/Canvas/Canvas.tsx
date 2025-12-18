@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import CanvasRenderer from './CanvasRenderer';
+import { deserializeProject } from '../../utils/projectSerializer';
 
 /**
  * Canvas container component
@@ -9,6 +10,8 @@ import CanvasRenderer from './CanvasRenderer';
 function Canvas() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addLayer = useCompositorStore((state) => state.addLayer);
+  const loadProject = useCompositorStore((state) => state.loadProject);
+  const markClean = useCompositorStore((state) => state.markClean);
 
   /**
    * Handle image file upload
@@ -25,10 +28,29 @@ function Canvas() {
 
     for (const file of Array.from(files)) {
       try {
+        // Check for .pixcomp file
+        if (file.name.toLowerCase().endsWith('.pixcomp')) {
+          try {
+            const text = await file.text();
+            const projectData = await deserializeProject(text);
+            loadProject(projectData);
+            markClean();
+            // Stop processing other files if a project is loaded
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+            return;
+          } catch (error) {
+            console.error('[DEBUG] Load project failed:', error);
+            alert(`Error loading project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            continue;
+          }
+        }
+
         // Validate file type
         if (!['image/png', 'image/gif', 'image/bmp', 'image/jpeg'].includes(file.type)) {
           console.warn(`[DEBUG] Unsupported file type: ${file.type}`);
-          alert(`Unsupported file type: ${file.type}. Please use PNG, GIF, BMP, or JPEG.`);
+          alert(`Unsupported file type: ${file.type}. Please use .pixcomp, PNG, GIF, BMP, or JPEG.`);
           continue;
         }
 
@@ -101,7 +123,7 @@ function Canvas() {
               Click to upload images or drag & drop
             </div>
             <div className="text-sm text-gray-400">
-              Supported: PNG, GIF, BMP, JPEG
+              Supported: .pixcomp, PNG, GIF, BMP, JPEG
             </div>
           </div>
         </div>
@@ -112,7 +134,7 @@ function Canvas() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/png,image/gif,image/bmp,image/jpeg"
+        accept=".pixcomp,image/png,image/gif,image/bmp,image/jpeg"
         onChange={handleImageUpload}
         className="hidden"
       />

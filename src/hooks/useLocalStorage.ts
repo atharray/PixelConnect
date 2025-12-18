@@ -21,6 +21,8 @@ interface StoredPreferences {
   canvasBorderColor?: string;
   canvasBorderWidth?: number;
   canvasBorderOpacity?: number;
+  canvasBorderEnabled?: boolean;
+  canvasShadowIntensity?: number;
 }
 
 /**

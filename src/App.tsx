@@ -9,6 +9,7 @@ import useCompositorStore from './store/compositorStore';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useAutoHistory from './hooks/useAutoHistory';
 import useDebugMenu from './hooks/useDebugMenu';
+import { useAutoSave } from './hooks/useAutoSave';
 import { useInitializePreferences } from './hooks/useLocalStorage';
 import { Layer } from './types/compositor.types';
 
@@ -32,6 +33,9 @@ function App() {
 
   // Initialize automatic history tracking
   useAutoHistory();
+
+  // Initialize auto-save
+  useAutoSave();
 
   // Initialize debug menu
   const { isOpen: isDebugMenuOpen, setIsOpen: setIsDebugMenuOpen } = useDebugMenu();

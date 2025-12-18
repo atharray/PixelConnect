@@ -196,7 +196,7 @@ const useCompositorStore = create<CompositorStore>()(
       },
 
       // Layer operations
-      addLayer: (layer: Omit<Layer, 'id'>) => {
+      addLayer: (layer: Omit<Layer, 'id'> & { id?: string }) => {
         set((state) => ({
           project: {
             ...state.project,
