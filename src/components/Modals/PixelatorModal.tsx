@@ -513,7 +513,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                           />
                           <button
                             onClick={handleSuggestColors}
-                            disabled={isSuggesting || paletteMode === 'none'}
+                            disabled={isSuggesting}
                             className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xs rounded transition-colors"
                           >
                             {isSuggesting ? '...' : 'Go'}
