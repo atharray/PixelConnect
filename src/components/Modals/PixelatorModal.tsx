@@ -701,15 +701,17 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
           </div>
 
           {/* Execute button - sticky footer */}
-          <div className="p-4 border-t border-gray-700 bg-gray-800/30 flex-shrink-0">
-            <button 
-              onClick={processImage}
-              className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-semibold transition-colors flex items-center justify-center gap-2"
-            >
-              <span>▶</span>
-              <span>Execute</span>
-            </button>
-          </div>
+          {!autoUpdate && (
+            <div className="p-4 border-t border-gray-700 bg-gray-800/30 flex-shrink-0">
+              <button 
+                onClick={processImage}
+                className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <span>▶</span>
+                <span>Execute</span>
+              </button>
+            </div>
+          )}
 
         </div>
 
