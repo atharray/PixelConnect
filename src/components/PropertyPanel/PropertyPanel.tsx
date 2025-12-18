@@ -3,6 +3,7 @@ import PositionInputs from './PositionInputs';
 import OpacityControl from './OpacityControl';
 import CanvasSettings from './CanvasSettings';
 import ColorAnalysis from './ColorAnalysis';
+import ShapeProperties from './ShapeProperties';
 import TransparencyMaskModal from '../Modals/TransparencyMaskModal';
 import PixelatorModal from '../Modals/PixelatorModal';
 import { useState } from 'react';
@@ -56,6 +57,11 @@ function PropertyPanel() {
 
             {/* Color Analysis (if single layer selected) */}
             {selectedLayerIds.length === 1 && selectedLayers.length > 0 && <ColorAnalysis layer={selectedLayers[0]} />}
+
+            {/* Shape Properties (if single shape layer selected) */}
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && selectedLayers[0].shapeType && (
+              <ShapeProperties layer={selectedLayers[0]} />
+            )}
 
             {/* Layer Modification Menu */}
             {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (

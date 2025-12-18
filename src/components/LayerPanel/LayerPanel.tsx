@@ -150,6 +150,14 @@ function LayerPanel() {
           </button>
 
           <button
+            onClick={() => (window as any).openShapeModal?.()}
+            className="flex-1 min-w-16 px-2 py-1 text-xs font-medium text-purple-400 hover:text-purple-300 bg-panel-bg hover:bg-purple-900 rounded transition-colors"
+            title="Create shape layer"
+          >
+            ◆
+          </button>
+
+          <button
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 min-w-16 px-2 py-1 text-xs font-medium text-green-400 hover:text-green-300 bg-panel-bg hover:bg-green-900 rounded transition-colors"
             title="Upload additional images"

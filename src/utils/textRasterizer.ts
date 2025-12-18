@@ -272,3 +272,11 @@ export async function rasterizeText(options: TextRasterizeOptions): Promise<Rast
 export function isTextLayer(layer: { textContent?: string }): boolean {
   return layer.textContent !== undefined && layer.textContent !== null;
 }
+
+/**
+ * Check if a layer has shape metadata (is a shape layer)
+ */
+export function isShapeLayer(layer: { shapeType?: string }): boolean {
+  return layer.shapeType !== undefined && layer.shapeType !== null;
+}
+

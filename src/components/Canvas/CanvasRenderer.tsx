@@ -464,7 +464,8 @@ function CanvasRenderer() {
 
                 // Check for text layer and single selection
                 const isTextLayer = layer.textContent !== undefined;
-                const showEditIcon = isTextLayer && selectedLayerIds.length === 1;
+                const isShapeLayer = layer.shapeType !== undefined;
+                const showEditIcon = (isTextLayer || isShapeLayer) && selectedLayerIds.length === 1;
 
                 return (
                   <g key={layer.id}>
@@ -498,18 +499,22 @@ function CanvasRenderer() {
                       }}
                     />
                     
-                    {/* Text Edit Icon */}
+                    {/* Edit Icon (Text or Shape) */}
                     {showEditIcon && (
                       <g
                         transform={`translate(${x - 12}, ${y - 12})`}
                         style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          (window as any).openTextLayerModal?.(layer);
+                          if (isTextLayer) {
+                            (window as any).openTextLayerModal?.(layer);
+                          } else if (isShapeLayer) {
+                            (window as any).openShapeModal?.(layer);
+                          }
                         }}
                         onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
                       >
-                        <circle cx="12" cy="12" r="10" fill="#2563eb" stroke="#ffffff" strokeWidth="1.5" />
+                        <circle cx="12" cy="12" r="10" fill={isShapeLayer ? "#9333ea" : "#2563eb"} stroke="#ffffff" strokeWidth="1.5" />
                         <path
                           d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
                           fill="white"

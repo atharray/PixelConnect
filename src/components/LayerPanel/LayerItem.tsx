@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import { Layer } from '../../types/compositor.types';
-import { isTextLayer } from '../../utils/textRasterizer';
+import { isTextLayer, isShapeLayer } from '../../utils/textRasterizer';
 
 interface LayerItemProps {
   layer: Layer;
@@ -332,6 +332,20 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
             title="Edit text"
           >
             <span className="font-bold text-sm">T</span>
+          </button>
+        )}
+
+        {/* Edit Shape Button (only for shape layers) */}
+        {isShapeLayer(layer) && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              (window as any).openShapeModal?.(layer);
+            }}
+            className="flex-1 px-1 py-1 text-xs bg-purple-700 hover:bg-purple-600 rounded transition-colors flex items-center justify-center"
+            title="Edit shape"
+          >
+            ◆
           </button>
         )}
         <button

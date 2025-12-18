@@ -39,6 +39,16 @@ export interface Layer {
   fontColor?: string; // Hex color for text
   textAlign?: 'left' | 'center' | 'right'; // Text alignment
   disableTransparency?: boolean; // If true, text is rendered without anti-aliasing
+  
+  // Optional shape layer metadata (enables re-editing)
+  shapeType?: 'rectangle' | 'circle' | 'triangle' | 'hexagon' | 'octagon' | 'star'; // Shape type
+  shapeSize?: number; // Base size in pixels (width/height)
+  shapeStretchX?: number; // Horizontal stretch (0.1-20.0, where 1.0 is normal)
+  shapeStretchY?: number; // Vertical stretch (0.1-20.0, where 1.0 is normal)
+  shapeColor?: string; // Hex color for shape
+  lineHeight?: number; // Text line height
+  letterSpacing?: number; // Text letter spacing
+  fontWeight?: 'normal' | 'bold' | 'lighter'; // Text font weight
 }
 
 // Viewport state

@@ -17,7 +17,6 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
   const addLayer = useCompositorStore((state) => state.addLayer);
   const updateLayer = useCompositorStore((state) => state.updateLayer);
   const removeLayer = useCompositorStore((state) => state.removeLayer);
-  const layers = useCompositorStore((state) => state.project.layers);
   
   // State
   const [text, setText] = useState<string>('Enter your text here');
@@ -135,9 +134,6 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
     
     // Debounce the preview update to avoid race conditions
     previewUpdateTimeoutRef.current = window.setTimeout(() => {
-      const currentLayers = useCompositorStore.getState().project.layers;
-      const existingPreview = currentLayers.find(l => l.id === CANVAS_PREVIEW_LAYER_ID);
-      
       // Create temporary image to get dimensions
       const img = new Image();
       img.src = previewImage;

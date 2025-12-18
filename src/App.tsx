@@ -5,6 +5,7 @@ import PropertyPanel from './components/PropertyPanel/PropertyPanel';
 import Toolbar from './components/Toolbar/Toolbar';
 import DebugHistoryModal from './components/DebugMenu/DebugHistoryModal';
 import TextLayerModal from './components/Modals/TextLayerModal';
+import ShapeModal from './components/Modals/ShapeModal';
 import useCompositorStore from './store/compositorStore';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useAutoHistory from './hooks/useAutoHistory';
@@ -24,6 +25,10 @@ function App() {
   // Text layer modal state
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [editingTextLayer, setEditingTextLayer] = useState<Layer | undefined>(undefined);
+  
+  // Shape layer modal state
+  const [isShapeModalOpen, setIsShapeModalOpen] = useState(false);
+  const [editingShapeLayer, setEditingShapeLayer] = useState<Layer | undefined>(undefined);
 
   // Initialize preferences from localStorage
   useInitializePreferences();
@@ -51,11 +56,30 @@ function App() {
     setEditingTextLayer(undefined);
   };
   
+  // Handle opening shape modal for new or existing layer
+  const handleOpenShapeModal = (layer?: Layer) => {
+    setEditingShapeLayer(layer);
+    setIsShapeModalOpen(true);
+  };
+  
+  const handleCloseShapeModal = () => {
+    setIsShapeModalOpen(false);
+    setEditingShapeLayer(undefined);
+  };
+  
   // Expose text modal handler globally so Toolbar and LayerItem can access it
   useEffect(() => {
     (window as any).openTextLayerModal = handleOpenTextModal;
     return () => {
       delete (window as any).openTextLayerModal;
+    };
+  }, []);
+  
+  // Expose shape modal handler globally so Toolbar and LayerItem can access it
+  useEffect(() => {
+    (window as any).openShapeModal = handleOpenShapeModal;
+    return () => {
+      delete (window as any).openShapeModal;
     };
   }, []);
 
@@ -115,6 +139,13 @@ function App() {
         isOpen={isTextModalOpen}
         onClose={handleCloseTextModal}
         existingLayer={editingTextLayer}
+      />
+      
+      {/* Shape Layer Modal */}
+      <ShapeModal
+        isOpen={isShapeModalOpen}
+        onClose={handleCloseShapeModal}
+        existingLayer={editingShapeLayer}
       />
     </div>
   );
