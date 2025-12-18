@@ -84,6 +84,13 @@ export const GOOGLE_FONTS: FontOption[] = [
   { name: 'IBM Plex Mono', value: '"IBM Plex Mono", monospace', category: 'google', googleFontName: 'IBM+Plex+Mono' },
   { name: 'Anonymous Pro', value: '"Anonymous Pro", monospace', category: 'google', googleFontName: 'Anonymous+Pro' },
   { name: 'Overpass Mono', value: '"Overpass Mono", monospace', category: 'google', googleFontName: 'Overpass+Mono' },
+  
+  // Fun / Silly
+  { name: 'Creepster', value: '"Creepster", cursive', category: 'google', googleFontName: 'Creepster' },
+  { name: 'Frijole', value: '"Frijole", cursive', category: 'google', googleFontName: 'Frijole' },
+  { name: 'Spicy Rice', value: '"Spicy Rice", cursive', category: 'google', googleFontName: 'Spicy+Rice' },
+  { name: 'Ranchers', value: '"Ranchers", cursive', category: 'google', googleFontName: 'Ranchers' },
+  { name: 'Chewy', value: '"Chewy", cursive', category: 'google', googleFontName: 'Chewy' },
 ];
 
 // All fonts combined

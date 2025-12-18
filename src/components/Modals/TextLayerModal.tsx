@@ -30,7 +30,7 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
   const [fontSearch, setFontSearch] = useState<string>('');
   const [isFontDropdownOpen, setIsFontDropdownOpen] = useState<boolean>(false);
   const [previewOnCanvas, setPreviewOnCanvas] = useState<boolean>(false);
-  const [disableTransparency, setDisableTransparency] = useState<boolean>(false);
+  const [disableTransparency, setDisableTransparency] = useState<boolean>(true);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const previewUpdateTimeoutRef = useRef<number | null>(null);
