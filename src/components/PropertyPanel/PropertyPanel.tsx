@@ -4,6 +4,7 @@ import OpacityControl from './OpacityControl';
 import CanvasSettings from './CanvasSettings';
 import ColorAnalysis from './ColorAnalysis';
 import TransparencyMaskModal from '../Modals/TransparencyMaskModal';
+import PixelatorModal from '../Modals/PixelatorModal';
 import { useState } from 'react';
 
 /**
@@ -19,6 +20,7 @@ function PropertyPanel() {
 
   const [isModifyMenuOpen, setIsModifyMenuOpen] = useState(false);
   const [isTransparencyModalOpen, setIsTransparencyModalOpen] = useState(false);
+  const [isPixelatorModalOpen, setIsPixelatorModalOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-canvas-bg overflow-hidden">
@@ -79,10 +81,13 @@ function PropertyPanel() {
                       Transparency Masking
                     </button>
                     <button
-                      disabled
-                      className="w-full text-left px-3 py-2 text-xs text-gray-500 cursor-not-allowed"
+                      onClick={() => {
+                        setIsPixelatorModalOpen(true);
+                        setIsModifyMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-slate-700 hover:text-white"
                     >
-                      (TODO)
+                      Pixelator
                     </button>
                   </div>
                 )}
@@ -94,6 +99,14 @@ function PropertyPanel() {
               <TransparencyMaskModal 
                 isOpen={isTransparencyModalOpen}
                 onClose={() => setIsTransparencyModalOpen(false)}
+                layer={selectedLayers[0]}
+              />
+            )}
+
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (
+              <PixelatorModal 
+                isOpen={isPixelatorModalOpen}
+                onClose={() => setIsPixelatorModalOpen(false)}
                 layer={selectedLayers[0]}
               />
             )}

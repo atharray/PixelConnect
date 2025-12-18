@@ -411,7 +411,6 @@ function CanvasRenderer() {
         >
           <canvas
             ref={canvasRef}
-            className="cursor-pointer"
             style={{
               imageRendering: 'pixelated',
               backfaceVisibility: 'hidden',
