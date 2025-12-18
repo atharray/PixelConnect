@@ -44,7 +44,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
   // State
   const [targetHeight, setTargetHeight] = useState<number>(128);
   const [originalHeight, setOriginalHeight] = useState<number>(128);
-  const [resamplingMethod, setResamplingMethod] = useState<'nearest' | 'bilinear' | 'lanczos'>('lanczos');
+  const [resamplingMethod, setResamplingMethod] = useState<'nearest' | 'bilinear' | 'lanczos'>('bilinear');
   const [ditherMethod, setDitherMethod] = useState<string>('none');
   const [ditherStrength, setDitherStrength] = useState<number>(100);
   const [paletteMode, setPaletteMode] = useState<'geopixels' | 'wplace' | 'custom' | 'geopixels+custom' | 'none'>('geopixels');

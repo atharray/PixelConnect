@@ -33,6 +33,8 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
   const [lineHeight, setLineHeight] = useState<number>(1.2);
   const [letterSpacing, setLetterSpacing] = useState<number>(0);
   const [fontWeight, setFontWeight] = useState<'normal' | 'bold' | 'lighter'>('normal');
+  const [previewX, setPreviewX] = useState<number>(0);
+  const [previewY, setPreviewY] = useState<number>(0);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const previewUpdateTimeoutRef = useRef<number | null>(null);
@@ -50,6 +52,8 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
       setLineHeight((existingLayer as any).lineHeight || 1.2);
       setLetterSpacing((existingLayer as any).letterSpacing || 0);
       setFontWeight((existingLayer as any).fontWeight || 'normal');
+      setPreviewX(existingLayer.x);
+      setPreviewY(existingLayer.y);
       originalVisibilityRef.current = existingLayer.visible;
     }
   }, [existingLayer]);
@@ -77,7 +81,27 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
     } else {
       removeCanvasPreview();
     }
-  }, [previewOnCanvas, previewImage, text]);
+  }, [previewOnCanvas, previewImage, text, previewX, previewY]);
+
+  // Sync preview position from store (handles dragging on canvas)
+  useEffect(() => {
+    if (!previewOnCanvas) return;
+
+    const unsubscribe = useCompositorStore.subscribe((state) => {
+      const previewLayer = state.project.layers.find(l => l.id === CANVAS_PREVIEW_LAYER_ID);
+      if (previewLayer) {
+        // Only update if position changed significantly to avoid loops
+        if (Math.abs(previewLayer.x - previewX) > 0.1 || Math.abs(previewLayer.y - previewY) > 0.1) {
+          setPreviewX(previewLayer.x);
+          setPreviewY(previewLayer.y);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [previewOnCanvas, previewX, previewY]);
   
   // Clean up canvas preview when modal closes
   useEffect(() => {
@@ -142,10 +166,6 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
         const latestLayers = useCompositorStore.getState().project.layers;
         const stillExists = latestLayers.find(l => l.id === CANVAS_PREVIEW_LAYER_ID);
         
-        // Determine position from existing layer if available
-        const x = existingLayer ? existingLayer.x : 0;
-        const y = existingLayer ? existingLayer.y : 0;
-        
         if (stillExists) {
           // Update existing preview layer
           updateLayer(CANVAS_PREVIEW_LAYER_ID, {
@@ -153,8 +173,8 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
             width: img.naturalWidth,
             height: img.naturalHeight,
             opacity: 0.7, // Slightly transparent to indicate it's a preview
-            x,
-            y
+            x: previewX,
+            y: previewY
           });
         } else if (previewOnCanvas) {
           // Only create new preview layer if preview is still enabled and doesn't exist
@@ -162,11 +182,11 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
             id: CANVAS_PREVIEW_LAYER_ID,
             name: '🔍 Canvas Preview (Temporary)',
             imageData: previewImage,
-            x,
-            y,
+            x: previewX,
+            y: previewY,
             zIndex: Date.now() + 1000000, // Very high z-index to appear on top
             visible: true,
-            locked: true, // Lock to prevent accidental editing
+            locked: false, // Allow dragging for positioning
             opacity: 0.7,
             width: img.naturalWidth,
             height: img.naturalHeight
@@ -221,12 +241,18 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
         fontWeight
       } as any);
       
+      // Use preview position if canvas preview is enabled, otherwise use 0,0
+      const layerX = previewOnCanvas ? previewX : 0;
+      const layerY = previewOnCanvas ? previewY : 0;
+      
       if (existingLayer) {
         // Update existing layer
         updateLayer(existingLayer.id, {
           imageData: result.dataUrl,
           width: result.width,
           height: result.height,
+          x: layerX,
+          y: layerY,
           textContent: text,
           fontSize,
           fontFamily,
@@ -244,8 +270,8 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
           id: crypto.randomUUID(),
           name: `Text: ${text.substring(0, 20)}${text.length > 20 ? '...' : ''}`,
           imageData: result.dataUrl,
-          x: 0,
-          y: 0,
+          x: layerX,
+          y: layerY,
           zIndex: Date.now(),
           visible: true,
           locked: false,

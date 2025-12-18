@@ -15,6 +15,7 @@ function CanvasRenderer() {
   const project = useCompositorStore((state) => state.project);
   const selectedLayerIds = useCompositorStore((state) => state.selectedLayerIds);
   const showSelectionBorders = useCompositorStore((state) => state.ui.showSelectionBorders);
+  const showSelectionTools = useCompositorStore((state) => state.ui.showSelectionTools);
   const borderAnimationSpeed = useCompositorStore((state) => state.ui.selectionBorderAnimationSpeed);
   const isDraggingLayer = useCompositorStore((state) => state.ui.isDraggingLayer);
   const dragLayerId = useCompositorStore((state) => state.ui.dragLayerId);
@@ -26,6 +27,8 @@ function CanvasRenderer() {
   const updateDragPosition = useCompositorStore((state) => state.updateDragPosition);
   const stopDraggingLayer = useCompositorStore((state) => state.stopDraggingLayer);
   const setViewport = useCompositorStore((state) => state.setViewport);
+  const removeLayer = useCompositorStore((state) => state.removeLayer);
+  const updateLayer = useCompositorStore((state) => state.updateLayer);
 
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   const [isPanning, setIsPanning] = useState(false);
@@ -499,10 +502,67 @@ function CanvasRenderer() {
                       }}
                     />
                     
-                    {/* Edit Icon (Text or Shape) */}
-                    {showEditIcon && (
+                    {/* Delete Icon (All Layers) */}
+                    {showSelectionTools && selectedLayerIds.includes(layer.id) && selectedLayerIds.length === 1 && (
                       <g
-                        transform={`translate(${x - 12}, ${y - 12})`}
+                        className="selection-tool-icon"
+                        transform={`translate(${x + 4}, ${y - 14})`}
+                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeLayer(layer.id);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <circle cx="6" cy="6" r="5" fill="none" stroke="none" pointerEvents="all" />
+                        <path
+                          d="M4 4l16 16M20 4l-16 16"
+                          stroke="#9ca3af"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          transform="scale(0.4)"
+                          pointerEvents="none"
+                        />
+                      </g>
+                    )}
+
+                    {/* Visibility Toggle Icon (All Layers) */}
+                    {showSelectionTools && selectedLayerIds.includes(layer.id) && selectedLayerIds.length === 1 && (
+                      <g
+                        className="selection-tool-icon"
+                        transform={`translate(${x + 14}, ${y - 14})`}
+                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateLayer(layer.id, { visible: !layer.visible });
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <circle cx="6" cy="6" r="5" fill="none" stroke="none" pointerEvents="all" />
+                        {layer.visible ? (
+                          <path
+                            d="M12 4.5C7.244 4.5 3.226 7.662 1.934 12c1.292 4.338 5.31 7.5 10.066 7.5s8.773-3.162 10.065-7.5c-1.292-4.338-5.31-7.5-10.065-7.5zm0 12a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"
+                            fill="#9ca3af"
+                            stroke="#4b5563"
+                            strokeWidth="0.5"
+                            transform="scale(0.4)"
+                            pointerEvents="none"
+                          />
+                        ) : (
+                          <g pointerEvents="none">
+                            <circle cx="6" cy="6" r="4" fill="none" stroke="#9ca3af" strokeWidth="0.5" />
+                            <line x1="2" y1="2" x2="10" y2="10" stroke="#9ca3af" strokeWidth="0.5" />
+                          </g>
+                        )}
+                      </g>
+                    )}
+
+                    {/* Edit Icon (Text or Shape) */}
+                    {showSelectionTools && showEditIcon && (
+                      <g
+                        className="selection-tool-icon"
+                        transform={`translate(${x + 24}, ${y - 14})`}
                         style={{ cursor: 'pointer', pointerEvents: 'auto' }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -512,13 +572,16 @@ function CanvasRenderer() {
                             (window as any).openShapeModal?.(layer);
                           }
                         }}
-                        onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
+                        onMouseDown={(e) => e.stopPropagation()}
                       >
-                        <circle cx="12" cy="12" r="10" fill={isShapeLayer ? "#9333ea" : "#2563eb"} stroke="#ffffff" strokeWidth="1.5" />
+                        <circle cx="6" cy="6" r="5" fill="none" stroke="none" pointerEvents="all" />
                         <path
                           d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                          fill="white"
-                          transform="translate(6, 6) scale(0.5)"
+                          fill="#9ca3af"
+                          stroke="#4b5563"
+                          strokeWidth="0.5"
+                          transform="scale(0.4)"
+                          pointerEvents="none"
                         />
                       </g>
                     )}
@@ -533,6 +596,14 @@ function CanvasRenderer() {
                   100% {
                     stroke-dashoffset: -8;
                   }
+                }
+                .selection-tool-icon {
+                  opacity: 0.6;
+                  transition: opacity 0.2s ease, filter 0.2s ease;
+                }
+                .selection-tool-icon:hover {
+                  opacity: 1;
+                  filter: drop-shadow(0 0 4px rgba(156, 163, 175, 0.8));
                 }
               `}</style>
             </svg>

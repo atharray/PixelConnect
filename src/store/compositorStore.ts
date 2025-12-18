@@ -65,6 +65,7 @@ const DEFAULT_UI: UIState = {
   activeTool: 'select',
   showRulers: false,
   showSelectionBorders: true,
+  showSelectionTools: true,
   selectionBorderAnimationSpeed: 0.1,
   clipboardLayers: [],
   isDraggingLayer: false,
@@ -118,6 +119,7 @@ interface CompositorStore extends AppState {
   setGridDensity: (density: number) => void;
   toggleRulers: () => void;
   toggleSelectionBorders: () => void;
+  toggleSelectionTools: () => void;
   setSelectionBorderAnimationSpeed: (speed: number) => void;
   copySelectedLayers: () => void;
   pasteSelectedLayers: () => void;
@@ -759,6 +761,15 @@ const useCompositorStore = create<CompositorStore>()(
           ui: {
             ...state.ui,
             showSelectionBorders: !state.ui.showSelectionBorders,
+          },
+        }));
+      },
+
+      toggleSelectionTools: () => {
+        set((state) => ({
+          ui: {
+            ...state.ui,
+            showSelectionTools: !state.ui.showSelectionTools,
           },
         }));
       },

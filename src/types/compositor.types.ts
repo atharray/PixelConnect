@@ -119,6 +119,7 @@ export interface UIState {
   activeTool: 'select' | 'pan' | 'zoom';
   showRulers: boolean;
   showSelectionBorders: boolean;
+  showSelectionTools: boolean; // Show edit/delete/visibility icons on selected layers
   selectionBorderAnimationSpeed: number; // 0 = no movement, 1 = max speed
   clipboardLayers: Layer[];
   isDraggingLayer: boolean;

@@ -96,6 +96,57 @@ function resampleBilinear(srcData: ImageData, width: number, height: number): Im
   const src = srcData.data;
   const dest = new ImageData(width, height);
   const destData = dest.data;
+  
+  // If downscaling significantly, use area averaging (box sampling) for smoother results
+  if (width < srcData.width && height < srcData.height) {
+      const xRatio = srcData.width / width;
+      const yRatio = srcData.height / height;
+      
+      for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+              const srcX = x * xRatio;
+              const srcY = y * yRatio;
+              const srcW = xRatio;
+              const srcH = yRatio;
+              
+              let r = 0, g = 0, b = 0, a = 0, totalWeight = 0;
+              
+              const startX = Math.floor(srcX);
+              const startY = Math.floor(srcY);
+              const endX = Math.min(Math.ceil(srcX + srcW), srcData.width);
+              const endY = Math.min(Math.ceil(srcY + srcH), srcData.height);
+              
+              for (let sy = startY; sy < endY; sy++) {
+                  for (let sx = startX; sx < endX; sx++) {
+                      // Calculate weight based on overlap area
+                      const weightX = Math.min(sx + 1, srcX + srcW) - Math.max(sx, srcX);
+                      const weightY = Math.min(sy + 1, srcY + srcH) - Math.max(sy, srcY);
+                      const weight = weightX * weightY;
+                      
+                      if (weight <= 0) continue;
+                      
+                      const srcIdx = (sy * srcData.width + sx) * 4;
+                      r += src[srcIdx] * weight;
+                      g += src[srcIdx + 1] * weight;
+                      b += src[srcIdx + 2] * weight;
+                      a += src[srcIdx + 3] * weight;
+                      totalWeight += weight;
+                  }
+              }
+              
+              const destIdx = (y * width + x) * 4;
+              if (totalWeight > 0) {
+                  destData[destIdx] = r / totalWeight;
+                  destData[destIdx + 1] = g / totalWeight;
+                  destData[destIdx + 2] = b / totalWeight;
+                  destData[destIdx + 3] = a / totalWeight;
+              }
+          }
+      }
+      return dest;
+  }
+
+  // Standard Bilinear for upscaling or mixed scaling
   const xRatio = (srcData.width - 1) / width;
   const yRatio = (srcData.height - 1) / height;
 
@@ -135,9 +186,12 @@ function resampleLanczos(imageData: ImageData, width: number, height: number): I
     const srcData = imageData.data;
     const srcWidth = imageData.width;
     const srcHeight = imageData.height;
-    const destImageData = new ImageData(width, height);
-    const destData = destImageData.data;
-
+    
+    // 1. Horizontal Pass (Resize Width)
+    // We create a temporary buffer with target width but original height
+    // We use Float32Array for intermediate precision
+    const tempBuffer = new Float32Array(width * srcHeight * 4);
+    
     const sinc = (x: number) => {
         x = Math.abs(x);
         if (x === 0) return 1;
@@ -152,54 +206,87 @@ function resampleLanczos(imageData: ImageData, width: number, height: number): I
         return 0;
     };
 
-    const ratioX = srcWidth / width;
-    const ratioY = srcHeight / height;
     const a = 3;
+    const ratioX = srcWidth / width;
+    const scaleX = ratioX > 1 ? ratioX : 1;
+    const radiusX = a * scaleX;
 
-    for (let dy = 0; dy < height; dy++) {
-        for (let dx = 0; dx < width; dx++) {
-            const sy = (dy + 0.5) * ratioY - 0.5;
-            const sx = (dx + 0.5) * ratioX - 0.5;
-
+    for (let y = 0; y < srcHeight; y++) {
+        for (let x = 0; x < width; x++) {
+            const sx = (x + 0.5) * ratioX - 0.5;
+            
             let r = 0, g = 0, b = 0, a_val = 0, totalWeight = 0;
-
-            const startX = Math.floor(sx) - a + 1;
-            const endX = Math.floor(sx) + a;
-            const startY = Math.floor(sy) - a + 1;
-            const endY = Math.floor(sy) + a;
-
-            for (let y = startY; y <= endY; y++) {
-                if (y < 0 || y >= srcHeight) continue;
-                for (let x = startX; x <= endX; x++) {
-                    if (x < 0 || x >= srcWidth) continue;
-
-                    const weight = lanczosKernel(sx - x, a) * lanczosKernel(sy - y, a);
-                    if (weight === 0) continue;
-
-                    const srcIndex = (y * srcWidth + x) * 4;
-                    r += srcData[srcIndex] * weight;
-                    g += srcData[srcIndex + 1] * weight;
-                    b += srcData[srcIndex + 2] * weight;
-                    a_val += srcData[srcIndex + 3] * weight;
-                    totalWeight += weight;
-                }
+            
+            const startX = Math.floor(sx - radiusX + 1);
+            const endX = Math.floor(sx + radiusX);
+            
+            for (let i = startX; i <= endX; i++) {
+                if (i < 0 || i >= srcWidth) continue;
+                
+                const weight = lanczosKernel((sx - i) / scaleX, a);
+                if (weight === 0) continue;
+                
+                const srcIdx = (y * srcWidth + i) * 4;
+                r += srcData[srcIdx] * weight;
+                g += srcData[srcIdx + 1] * weight;
+                b += srcData[srcIdx + 2] * weight;
+                a_val += srcData[srcIdx + 3] * weight;
+                totalWeight += weight;
             }
-
-            const destIndex = (dy * width + dx) * 4;
+            
+            const destIdx = (y * width + x) * 4;
             if (totalWeight > 0) {
-                destData[destIndex] = r / totalWeight;
-                destData[destIndex + 1] = g / totalWeight;
-                destData[destIndex + 2] = b / totalWeight;
-                destData[destIndex + 3] = a_val / totalWeight;
-            } else {
-                 // Fallback for edge cases
-                 destData[destIndex] = 0;
-                 destData[destIndex+1] = 0;
-                 destData[destIndex+2] = 0;
-                 destData[destIndex+3] = 0;
+                tempBuffer[destIdx] = r / totalWeight;
+                tempBuffer[destIdx + 1] = g / totalWeight;
+                tempBuffer[destIdx + 2] = b / totalWeight;
+                tempBuffer[destIdx + 3] = a_val / totalWeight;
             }
         }
     }
+
+    // 2. Vertical Pass (Resize Height)
+    // Resize from temp buffer (width x srcHeight) to final (width x height)
+    const destImageData = new ImageData(width, height);
+    const destData = destImageData.data;
+    
+    const ratioY = srcHeight / height;
+    const scaleY = ratioY > 1 ? ratioY : 1;
+    const radiusY = a * scaleY;
+
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            const sy = (y + 0.5) * ratioY - 0.5;
+            
+            let r = 0, g = 0, b = 0, a_val = 0, totalWeight = 0;
+            
+            const startY = Math.floor(sy - radiusY + 1);
+            const endY = Math.floor(sy + radiusY);
+            
+            for (let i = startY; i <= endY; i++) {
+                if (i < 0 || i >= srcHeight) continue;
+                
+                const weight = lanczosKernel((sy - i) / scaleY, a);
+                if (weight === 0) continue;
+                
+                const srcIdx = (i * width + x) * 4;
+                r += tempBuffer[srcIdx] * weight;
+                g += tempBuffer[srcIdx + 1] * weight;
+                b += tempBuffer[srcIdx + 2] * weight;
+                a_val += tempBuffer[srcIdx + 3] * weight;
+                totalWeight += weight;
+            }
+            
+            const destIdx = (y * width + x) * 4;
+            if (totalWeight > 0) {
+                // Clamp values to 0-255 for final output
+                destData[destIdx] = Math.max(0, Math.min(255, r / totalWeight));
+                destData[destIdx + 1] = Math.max(0, Math.min(255, g / totalWeight));
+                destData[destIdx + 2] = Math.max(0, Math.min(255, b / totalWeight));
+                destData[destIdx + 3] = Math.max(0, Math.min(255, a_val / totalWeight));
+            }
+        }
+    }
+
     return destImageData;
 }
 

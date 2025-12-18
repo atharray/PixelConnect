@@ -15,6 +15,8 @@ function Toolbar() {
   const setProjectName = useCompositorStore((state) => state.setProjectName);
   const showSelectionBorders = useCompositorStore((state) => state.ui.showSelectionBorders);
   const toggleSelectionBorders = useCompositorStore((state) => state.toggleSelectionBorders);
+  const showSelectionTools = useCompositorStore((state) => state.ui.showSelectionTools);
+  const toggleSelectionTools = useCompositorStore((state) => state.toggleSelectionTools);
   const borderAnimationSpeed = useCompositorStore((state) => state.ui.selectionBorderAnimationSpeed);
   const setSelectionBorderAnimationSpeed = useCompositorStore((state) => state.setSelectionBorderAnimationSpeed);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -100,6 +102,18 @@ function Toolbar() {
           }`}
         >
           Borders
+        </button>
+        
+        <button
+          onClick={toggleSelectionTools}
+          title={showSelectionTools ? 'Hide selection tools' : 'Show selection tools'}
+          className={`px-3 py-1 rounded transition-colors text-sm font-medium ${
+            showSelectionTools
+              ? 'bg-gray-600 text-white hover:bg-gray-500'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Tools
         </button>
         
         {showSelectionBorders && (
