@@ -602,6 +602,8 @@ self.onmessage = async (e: MessageEvent) => {
         }
 
         // 2. (Optional) K-Means color clustering
+        let generatedPalette: string[] | undefined;
+
         if (useKmeans && kmeansColors > 0) {
             const pixels = resizedImageData.data;
             const pixelArray: number[][] = [];
@@ -618,6 +620,12 @@ self.onmessage = async (e: MessageEvent) => {
                     g: Math.round(c[1]),
                     b: Math.round(c[2])
                 }));
+                
+                // Store generated palette for UI
+                generatedPalette = paletteRGB.map(c => 
+                    "#" + ((1 << 24) + (c.r << 16) + (c.g << 8) + c.b).toString(16).slice(1).toUpperCase()
+                );
+
                 const paletteLab = paletteRGB.map(rgbToLab);
 
                 for (let i = 0; i < pixels.length; i += 4) {
@@ -637,7 +645,7 @@ self.onmessage = async (e: MessageEvent) => {
             applyDithering(resizedImageData, palette, ditherMethod, ditherStrength);
         }
 
-        self.postMessage({ type: 'success', imageData: resizedImageData });
+        self.postMessage({ type: 'success', imageData: resizedImageData, generatedPalette });
 
     } catch (error: any) {
         self.postMessage({ type: 'error', message: error.message });

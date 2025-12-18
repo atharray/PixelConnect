@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useRef, useState } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import GridOverlay from './GridOverlay';
@@ -133,7 +134,6 @@ function CanvasRenderer() {
 
     // Draw checkered background for transparency
     if (project.canvas.showCheckeredBackground && !project.canvas.backgroundColor) {
-      const zoom = project.viewport.zoom / 100;
       // Use a fixed pattern size (in pixels) that scales with zoom for consistent appearance
       const patternSize = 8;
       
@@ -229,12 +229,14 @@ function CanvasRenderer() {
 
     const containerRect = container.getBoundingClientRect();
     
-    // Position relative to the container
+    // Position relative to the container (accounting for 20px padding on container)
     const relativeX = screenX - containerRect.left - 20;
     const relativeY = screenY - containerRect.top - 20;
     
-    const viewportWidth = containerRect.width - 20;
-    const viewportHeight = containerRect.height - 20;
+    // The inner div has width: calc(100% - 20px) inside a container with padding 20px
+    // So total reduction is 40px (20px padding + 20px from calc)
+    const viewportWidth = containerRect.width - 40;
+    const viewportHeight = containerRect.height - 40;
     
     const centerX = viewportWidth / 2;
     const centerY = viewportHeight / 2;
@@ -258,7 +260,7 @@ function CanvasRenderer() {
   /**
    * Handle canvas mouse events for layer dragging and panning
    */
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     // console.log('[DEBUG] Canvas mouse down event fired');
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -303,6 +305,13 @@ function CanvasRenderer() {
       ) {
         // console.log(`[DEBUG] Layer clicked: ${layer.name} at (${layer.x}, ${layer.y}) size (${layer.width}x${layer.height})`);
 
+        // Don't start dragging if layer is locked
+        if (layer.locked) {
+          // Still allow selection, just not dragging
+          selectLayer(layer.id, e.ctrlKey || e.metaKey);
+          return;
+        }
+
         const isMultiSelect = e.ctrlKey || e.metaKey;
         
         // If clicking a layer that's already selected (without Ctrl), keep other selections
@@ -329,7 +338,7 @@ function CanvasRenderer() {
     setPanStart({ x: e.clientX, y: e.clientY });
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -367,7 +376,7 @@ function CanvasRenderer() {
     // console.log('[DEBUG] Layer drag ended');
   };
 
-  const handleCanvasWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+  const handleCanvasWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
 
     const direction = e.deltaY > 0 ? -1 : 1;
@@ -453,6 +462,10 @@ function CanvasRenderer() {
                   y += dragOffsetY;
                 }
 
+                // Check for text layer and single selection
+                const isTextLayer = layer.textContent !== undefined;
+                const showEditIcon = isTextLayer && selectedLayerIds.length === 1;
+
                 return (
                   <g key={layer.id}>
                     {/* Light gray stripe */}
@@ -484,6 +497,26 @@ function CanvasRenderer() {
                         animation: borderAnimationSpeed > 0 ? `marching-ants ${8 / (0.125 * borderAnimationSpeed) / 1000}s linear infinite` : 'none',
                       }}
                     />
+                    
+                    {/* Text Edit Icon */}
+                    {showEditIcon && (
+                      <g
+                        transform={`translate(${x - 12}, ${y - 12})`}
+                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          (window as any).openTextLayerModal?.(layer);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()} // Prevent drag start
+                      >
+                        <circle cx="12" cy="12" r="10" fill="#2563eb" stroke="#ffffff" strokeWidth="1.5" />
+                        <path
+                          d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                          fill="white"
+                          transform="translate(6, 6) scale(0.5)"
+                        />
+                      </g>
+                    )}
                   </g>
                 );
               })}

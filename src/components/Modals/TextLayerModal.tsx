@@ -186,8 +186,9 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
       removeLayer(CANVAS_PREVIEW_LAYER_ID);
     }
 
-    // Restore existing layer visibility if we hid it
-    if (existingLayer && originalVisibilityRef.current) {
+    // Always restore existing layer visibility if we're editing a layer
+    // (we may have hidden it to show the preview)
+    if (existingLayer) {
       const currentLayer = currentLayers.find(l => l.id === existingLayer.id);
       if (currentLayer && !currentLayer.visible) {
         updateLayer(existingLayer.id, { visible: true });

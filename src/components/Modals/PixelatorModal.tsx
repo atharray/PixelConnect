@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import DraggableModal from './DraggableModal';
 import useCompositorStore from '../../store/compositorStore';
 import { Layer } from '../../types/compositor.types';
@@ -33,6 +33,11 @@ const DITHER_ALGORITHMS = [
   { value: 'grid', label: 'Grid' },
 ];
 
+const COMMON_HEIGHTS = [
+  64, 100, 128, 150, 200, 250, 256, 300, 350, 400, 450, 500, 
+  512, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000
+];
+
 const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer }) => {
   const updateLayer = useCompositorStore((state) => state.updateLayer);
   
@@ -40,7 +45,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
   const [targetHeight, setTargetHeight] = useState<number>(128);
   const [originalHeight, setOriginalHeight] = useState<number>(128);
   const [resamplingMethod, setResamplingMethod] = useState<'nearest' | 'bilinear' | 'lanczos'>('lanczos');
-  const [ditherMethod, setDitherMethod] = useState<string>('floyd-steinberg');
+  const [ditherMethod, setDitherMethod] = useState<string>('none');
   const [ditherStrength, setDitherStrength] = useState<number>(100);
   const [paletteMode, setPaletteMode] = useState<'geopixels' | 'wplace' | 'custom' | 'geopixels+custom' | 'none'>('geopixels');
   const [customPaletteInput, setCustomPaletteInput] = useState<string>('');
@@ -57,6 +62,12 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
   const [isSuggesting, setIsSuggesting] = useState<boolean>(false);
   const [hasSemiTransparent, setHasSemiTransparent] = useState<boolean>(false);
   const [autoUpdate, setAutoUpdate] = useState<boolean>(true);
+  const [colorStats, setColorStats] = useState<Map<string, { count: number, percent: number }>>(new Map());
+  const [hoveredColor, setHoveredColor] = useState<string | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number, y: number } | null>(null);
+  const [generatedPalette, setGeneratedPalette] = useState<string[]>([]);
+  const [hasInitialFit, setHasInitialFit] = useState<boolean>(false);
+  const [pinFitToScreen, setPinFitToScreen] = useState<boolean>(true);
   
   // Extra Features State
   const [isExtraFeaturesOpen, setIsExtraFeaturesOpen] = useState<boolean>(false);
@@ -67,13 +78,48 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
   const workerRef = useRef<Worker | null>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  
+  // Track previous state to restore K-Means when switching back to 'none'
+  const wasKmeansEnabledRef = useRef<boolean>(false);
+  const prevPaletteModeRef = useRef<string>(paletteMode);
+  const debounceTimeRef = useRef<number>(750);
+
+  const analyzePreviewColors = (imageData: ImageData) => {
+    const data = imageData.data;
+    const stats = new Map<string, number>();
+    let totalPixels = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+
+      if (a === 0) continue; // Skip transparent
+
+      // Convert to hex
+      const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+      stats.set(hex, (stats.get(hex) || 0) + 1);
+      totalPixels++;
+    }
+
+    const result = new Map<string, { count: number, percent: number }>();
+    stats.forEach((count, hex) => {
+      result.set(hex, {
+        count,
+        percent: totalPixels > 0 ? (count / totalPixels) * 100 : 0
+      });
+    });
+    
+    setColorStats(result);
+  };
 
   // Initialize Worker
   useEffect(() => {
     workerRef.current = new PixelatorWorker();
     if (workerRef.current) {
       workerRef.current.onmessage = (e) => {
-        const { type, imageData, message, suggestions } = e.data;
+        const { type, imageData, message, suggestions, generatedPalette } = e.data;
         if (type === 'success') {
           // Convert ImageData back to Data URL for display
           const canvas = document.createElement('canvas');
@@ -82,8 +128,25 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.putImageData(imageData, 0, 0);
-            setPreviewImage(canvas.toDataURL());
+            
+            // Update dimensions immediately to avoid flash
+            setImageDimensions({ width: imageData.width, height: imageData.height });
             setResultDimensions({ width: imageData.width, height: imageData.height });
+            
+            // Calculate zoom immediately if pinned
+            if (pinFitToScreen) {
+               const newZoom = calculateFitZoom(imageData.width, imageData.height);
+               setZoom(newZoom);
+            }
+
+            setPreviewImage(canvas.toDataURL());
+            analyzePreviewColors(imageData);
+            
+            if (generatedPalette) {
+              setGeneratedPalette(generatedPalette);
+            } else {
+              setGeneratedPalette([]);
+            }
           }
         } else if (type === 'suggestions') {
           setSuggestedColors(suggestions);
@@ -139,18 +202,28 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
     let customColors: string[] = [];
     
     if (rawInput) {
-      // Check for integer format (userData.colors)
-      if (/^\d+(,\s*\d+)*$/.test(rawInput)) {
-        customColors = rawInput.split(',').map(s => {
-          const decimal = parseInt(s.trim(), 10);
-          return '#' + decimal.toString(16).padStart(6, '0').toUpperCase();
-        });
-      } else {
-        // Parse hex codes (comma, space, or newline separated)
-        customColors = rawInput.split(/[\s,]+/).filter(s => /^#?[0-9A-F]{6}$/i.test(s)).map(s => {
-          return s.startsWith('#') ? s : '#' + s;
-        });
-      }
+      // Split by comma, space, or newline to handle various formats
+      const parts = rawInput.split(/[\s,]+/).filter(s => s.trim() !== '');
+      
+      customColors = parts.map(s => {
+        const trimmed = s.trim();
+        
+        // Check if it's a decimal integer (e.g. "16777215")
+        if (/^\d+$/.test(trimmed)) {
+          const decimal = parseInt(trimmed, 10);
+          // Ensure it's a valid 24-bit color
+          if (decimal >= 0 && decimal <= 16777215) {
+            return '#' + decimal.toString(16).padStart(6, '0').toUpperCase();
+          }
+        }
+        
+        // Check if it's a hex code (e.g. "#FFFFFF" or "FFFFFF")
+        if (/^#?[0-9A-F]{6}$/i.test(trimmed)) {
+          return trimmed.startsWith('#') ? trimmed.toUpperCase() : '#' + trimmed.toUpperCase();
+        }
+        
+        return null;
+      }).filter((c): c is string => c !== null);
     }
     
     if (paletteMode === 'custom') return customColors;
@@ -167,6 +240,31 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
     
     return [];
   }, [paletteMode, customPaletteInput]);
+
+  // Handle K-Means state when palette mode changes
+  useEffect(() => {
+    // Leaving 'none' mode
+    if (prevPaletteModeRef.current === 'none' && paletteMode !== 'none') {
+      if (useKmeans) {
+        wasKmeansEnabledRef.current = true;
+        setUseKmeans(false);
+      } else {
+        wasKmeansEnabledRef.current = false;
+      }
+    } 
+    // Entering 'none' mode
+    else if (prevPaletteModeRef.current !== 'none' && paletteMode === 'none') {
+      if (wasKmeansEnabledRef.current) {
+        setUseKmeans(true);
+      }
+    }
+    // Ensure K-Means is off if not in 'none' mode (cleanup/safety)
+    else if (paletteMode !== 'none' && useKmeans) {
+      setUseKmeans(false);
+    }
+
+    prevPaletteModeRef.current = paletteMode;
+  }, [paletteMode, useKmeans]);
 
   // Trigger Processing
   const processImage = useCallback(() => {
@@ -222,7 +320,8 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
     
     const timer = setTimeout(() => {
       processImage();
-    }, 750);
+      debounceTimeRef.current = 750; // Reset to default after execution
+    }, debounceTimeRef.current);
 
     return () => clearTimeout(timer);
   }, [
@@ -253,9 +352,48 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
     }
   };
 
+  const calculateFitZoom = useCallback((width: number, height: number) => {
+    if (!previewContainerRef.current) return 1;
+    
+    const containerWidth = previewContainerRef.current.clientWidth;
+    const containerHeight = previewContainerRef.current.clientHeight;
+    
+    // Add some padding (e.g., 40px total)
+    const availableWidth = containerWidth - 40;
+    const availableHeight = containerHeight - 40;
+    
+    if (availableWidth <= 0 || availableHeight <= 0) return 1;
+
+    const scaleX = availableWidth / width;
+    const scaleY = availableHeight / height;
+    
+    // Use the smaller scale to ensure it fits entirely
+    const newZoom = Math.min(scaleX, scaleY);
+    
+    return Math.max(0.1, newZoom);
+  }, []);
+
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.5, 20));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.5, 0.5));
   const handleZoomReset = () => setZoom(1);
+  const handleFitToScreen = useCallback(() => {
+    if (!imageDimensions) return;
+    setZoom(calculateFitZoom(imageDimensions.width, imageDimensions.height));
+  }, [imageDimensions, calculateFitZoom]);
+
+  // Auto-fit on first load or when pinned
+  useEffect(() => {
+    if (imageDimensions && previewContainerRef.current) {
+      if (!hasInitialFit) {
+        // Small delay to ensure layout is stable
+        setTimeout(() => {
+          handleFitToScreen();
+          setHasInitialFit(true);
+        }, 50);
+      }
+    }
+  }, [imageDimensions, hasInitialFit, handleFitToScreen]);
+
   const handleHeightReset = () => setTargetHeight(originalHeight);
 
   const checkForSemiTransparentPixels = (imageData: ImageData): boolean => {
@@ -322,10 +460,33 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
     }
   };
 
+  const sortedPalette = useMemo(() => {
+    let currentPalette = getPalette();
+    
+    // Use generated palette if available and we're in 'none' mode with K-Means
+    if (paletteMode === 'none' && useKmeans && generatedPalette.length > 0) {
+      currentPalette = generatedPalette;
+    }
+
+    if (colorStats.size === 0) return currentPalette;
+
+    return [...currentPalette].sort((a, b) => {
+      const countA = colorStats.get(a)?.count || 0;
+      const countB = colorStats.get(b)?.count || 0;
+      
+      // Sort by count descending
+      if (countA !== countB) {
+        return countB - countA;
+      }
+      
+      // If counts are equal, keep original order (stable sort)
+      return 0;
+    });
+  }, [getPalette, colorStats, generatedPalette, paletteMode, useKmeans]);
+
   const handleCopyPalette = () => {
-    const palette = getPalette();
-    if (palette.length > 0) {
-      navigator.clipboard.writeText(palette.join(', '));
+    if (sortedPalette.length > 0) {
+      navigator.clipboard.writeText(sortedPalette.join(', '));
     }
   };
 
@@ -351,6 +512,21 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                     className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm"
                   />
                 </div>
+                <select
+                  className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-400"
+                  onChange={(e) => {
+                      if (e.target.value) {
+                          debounceTimeRef.current = 100; // Fast update for dropdown
+                          setTargetHeight(Number(e.target.value));
+                      }
+                  }}
+                  value={COMMON_HEIGHTS.includes(targetHeight) ? targetHeight : ""}
+                >
+                  <option value="" disabled>common sizes</option>
+                  {COMMON_HEIGHTS.map(h => (
+                      <option key={h} value={h}>{h}px</option>
+                  ))}
+                </select>
                 <button
                   onClick={handleHeightReset}
                   className="text-xs px-2 py-1 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded transition-colors whitespace-nowrap flex-shrink-0"
@@ -359,9 +535,10 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                   Reset
                 </button>
               </div>
+
               {resultDimensions && (
-                <div className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded whitespace-nowrap inline-block">
-                  {resultDimensions.width} × {resultDimensions.height}
+                <div className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded whitespace-nowrap">
+                  {resultDimensions.width} × {resultDimensions.height} <span className="text-gray-600 mx-1">|</span> {(resultDimensions.width * resultDimensions.height).toLocaleString()} px
                 </div>
               )}
             </div>
@@ -408,7 +585,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                   type="radio" 
                   name="palette" 
                   checked={paletteMode === 'geopixels'}
-                  onChange={() => setPaletteMode('geopixels')}
+                  onChange={() => { debounceTimeRef.current = 100; setPaletteMode('geopixels'); }}
                 />
                 <span className="text-sm">Geopixels Base</span>
               </label>
@@ -417,7 +594,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                   type="radio" 
                   name="palette" 
                   checked={paletteMode === 'wplace'}
-                  onChange={() => setPaletteMode('wplace')}
+                  onChange={() => { debounceTimeRef.current = 100; setPaletteMode('wplace'); }}
                 />
                 <span className="text-sm">wplace Base</span>
               </label>
@@ -426,7 +603,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                   type="radio" 
                   name="palette" 
                   checked={paletteMode === 'custom'}
-                  onChange={() => setPaletteMode('custom')}
+                  onChange={() => { debounceTimeRef.current = 100; setPaletteMode('custom'); }}
                 />
                 <span className="text-sm">Custom</span>
               </label>
@@ -435,7 +612,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                   type="radio" 
                   name="palette" 
                   checked={paletteMode === 'geopixels+custom'}
-                  onChange={() => setPaletteMode('geopixels+custom')}
+                  onChange={() => { debounceTimeRef.current = 100; setPaletteMode('geopixels+custom'); }}
                 />
                 <span className="text-sm">Geopixels Base + Custom</span>
               </label>
@@ -444,7 +621,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                   type="radio" 
                   name="palette" 
                   checked={paletteMode === 'none'}
-                  onChange={() => setPaletteMode('none')}
+                  onChange={() => { debounceTimeRef.current = 100; setPaletteMode('none'); }}
                 />
                 <span className="text-sm">No Recoloring (Resize Only)</span>
               </label>
@@ -483,19 +660,65 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
               {isPaletteVisualizationOpen && (
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-0 bg-gray-900 p-1 rounded border border-gray-700">
-                    {getPalette().length > 0 ? (
-                      getPalette().map((color, idx) => (
+                    {sortedPalette.length > 0 ? (
+                      sortedPalette.map((color, idx) => (
                         <div
                           key={idx}
-                          className="w-4 h-4"
+                          className="w-4 h-4 cursor-crosshair hover:z-10 hover:scale-125 transition-transform duration-75 border border-transparent hover:border-white"
                           style={{ backgroundColor: color }}
-                          title={color}
+                          onMouseEnter={(e) => {
+                            setHoveredColor(color);
+                            setHoverPos({ x: e.clientX, y: e.clientY });
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredColor(null);
+                            setHoverPos(null);
+                          }}
+                          onMouseMove={(e) => {
+                            setHoverPos({ x: e.clientX, y: e.clientY });
+                          }}
                         />
                       ))
                     ) : (
                       <div className="text-xs text-gray-500 p-2">No palette selected</div>
                     )}
                   </div>
+
+                  {/* Hover Tooltip */}
+                  {hoveredColor && hoverPos && (
+                    <div
+                      style={{
+                        position: 'fixed',
+                        left: hoverPos.x + 15,
+                        top: hoverPos.y + 15,
+                        zIndex: 9999,
+                        pointerEvents: 'none'
+                      }}
+                      className="bg-gray-900 border border-gray-600 rounded p-2 shadow-xl text-xs min-w-[120px]"
+                    >
+                      <div className="flex items-center gap-2 mb-1 pb-1 border-b border-gray-700">
+                        <div 
+                          className="w-3 h-3 border border-gray-500" 
+                          style={{ backgroundColor: hoveredColor }}
+                        />
+                        <span className="font-mono font-bold text-white">{hoveredColor}</span>
+                      </div>
+                      {colorStats.has(hoveredColor) ? (
+                        <div className="text-gray-300 space-y-0.5">
+                          <div className="flex justify-between gap-4">
+                            <span>Count:</span>
+                            <span className="text-white font-mono">{colorStats.get(hoveredColor)?.count.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span>Usage:</span>
+                            <span className="text-white font-mono">{colorStats.get(hoveredColor)?.percent.toFixed(2)}%</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-500 italic">Not used in preview</div>
+                      )}
+                    </div>
+                  )}
 
                   {(paletteMode === 'custom' || paletteMode === 'geopixels+custom') && (
                     <div className="space-y-2 border-t border-gray-700 pt-2">
@@ -558,7 +781,7 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
             <label className="text-xs font-semibold text-gray-400 uppercase">Dithering</label>
             <select 
               value={ditherMethod}
-              onChange={(e) => setDitherMethod(e.target.value)}
+              onChange={(e) => { debounceTimeRef.current = 100; setDitherMethod(e.target.value); }}
               className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm"
             >
               {DITHER_ALGORITHMS.map(algo => (
@@ -586,14 +809,22 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
 
           {/* K-Means Clustering */}
           <div className="space-y-2">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={useKmeans}
-                onChange={(e) => setUseKmeans(e.target.checked)}
-              />
-              <span className="text-xs font-semibold text-gray-400 uppercase">K-Means Color Reduction</span>
-            </label>
+            <div className="group relative inline-block w-full">
+              <label className={`flex items-center space-x-2 ${paletteMode !== 'none' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                <input 
+                  type="checkbox" 
+                  checked={useKmeans}
+                  onChange={(e) => setUseKmeans(e.target.checked)}
+                  disabled={paletteMode !== 'none'}
+                />
+                <span className="text-xs font-semibold text-gray-400 uppercase">K-Means Color Reduction</span>
+              </label>
+              {paletteMode !== 'none' && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-gray-900 border border-gray-600 rounded shadow-xl text-xs text-gray-300 hidden group-hover:block z-50">
+                  K-Means is only available when "No Recoloring" is selected. It's used to reduce the color space when you're not providing a specific palette.
+                </div>
+              )}
+            </div>
             
             {useKmeans && (
               <div>
@@ -730,11 +961,21 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                     />
                     <span className="text-xs text-gray-400 select-none">Auto-update</span>
                   </label>
+                  <label className="flex items-center gap-1 cursor-pointer" title="Always fit preview to screen">
+                    <input 
+                      type="checkbox" 
+                      checked={pinFitToScreen}
+                      onChange={(e) => setPinFitToScreen(e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800"
+                    />
+                    <span className="text-xs text-gray-400 select-none">Pin Fit</span>
+                  </label>
                 </div>
                 <div className="flex space-x-2 items-center">
                     <button onClick={handleZoomOut} className="bg-gray-700 p-1 rounded hover:bg-gray-600 text-sm font-bold" title="Zoom out">−</button>
                     <span className="bg-gray-700 px-2 py-1 rounded text-sm font-mono min-w-[50px] text-center">{Math.round(zoom * 100)}%</span>
                     <button onClick={handleZoomIn} className="bg-gray-700 p-1 rounded hover:bg-gray-600 text-sm font-bold" title="Zoom in">+</button>
+                    <button onClick={handleFitToScreen} className="bg-gray-700 px-2 py-1 rounded hover:bg-gray-600 text-xs" title="Fit to screen">Fit</button>
                     <button onClick={handleZoomReset} className="bg-gray-700 px-2 py-1 rounded hover:bg-gray-600 text-xs" title="Reset zoom">Reset</button>
                 </div>
             </div>
@@ -767,7 +1008,6 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                     style={{
                       width: imageDimensions ? `${imageDimensions.width * zoom}px` : 'auto',
                       height: imageDimensions ? `${imageDimensions.height * zoom}px` : 'auto',
-                      transition: 'width 0.1s ease-out, height 0.1s ease-out',
                       maxWidth: 'none',
                       imageRendering: 'pixelated',
                     }}
