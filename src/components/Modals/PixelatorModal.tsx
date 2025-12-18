@@ -481,18 +481,72 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
               </div>
               
               {isPaletteVisualizationOpen && (
-                <div className="flex flex-wrap gap-0 bg-gray-900 p-1 rounded border border-gray-700">
-                  {getPalette().length > 0 ? (
-                    getPalette().map((color, idx) => (
-                      <div
-                        key={idx}
-                        className="w-4 h-4"
-                        style={{ backgroundColor: color }}
-                        title={color}
-                      />
-                    ))
-                  ) : (
-                    <div className="text-xs text-gray-500 p-2">No palette selected</div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-0 bg-gray-900 p-1 rounded border border-gray-700">
+                    {getPalette().length > 0 ? (
+                      getPalette().map((color, idx) => (
+                        <div
+                          key={idx}
+                          className="w-4 h-4"
+                          style={{ backgroundColor: color }}
+                          title={color}
+                        />
+                      ))
+                    ) : (
+                      <div className="text-xs text-gray-500 p-2">No palette selected</div>
+                    )}
+                  </div>
+
+                  {(paletteMode === 'custom' || paletteMode === 'geopixels+custom') && (
+                    <div className="space-y-2 border-t border-gray-700 pt-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-xs font-semibold text-gray-400 uppercase whitespace-nowrap">Suggest Colors</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            max="32"
+                            value={suggestCount}
+                            onChange={(e) => setSuggestCount(Math.max(1, Math.min(32, Number(e.target.value))))}
+                            className="w-12 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-xs text-center"
+                            title="Number of colors to suggest"
+                          />
+                          <button
+                            onClick={handleSuggestColors}
+                            disabled={isSuggesting || paletteMode === 'none'}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xs rounded transition-colors"
+                          >
+                            {isSuggesting ? '...' : 'Go'}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {suggestedColors.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-1 bg-gray-900 p-2 rounded border border-gray-700">
+                            {suggestedColors.map((color, idx) => (
+                              <div
+                                key={idx}
+                                className="w-8 h-8 rounded border border-gray-500 cursor-pointer hover:border-white"
+                                style={{ backgroundColor: color }}
+                                title={`${color} - Click to copy`}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(color);
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <button
+                            onClick={handleAddSuggestedToCustom}
+                            className="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+                          >
+                            Add to Custom Palette
+                          </button>
+                        </div>
+                      )}
+                      
+                      <p className="text-xs text-gray-500">Analyzes the image to find dominant colors missing from your palette.</p>
+                    </div>
                   )}
                 </div>
               )}
@@ -644,57 +698,6 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
               </div>
             )}
           </div>
-
-          {/* Suggest Missing Colors */}
-          <div className="space-y-2 border-t border-gray-700 pt-4">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold text-gray-400 uppercase whitespace-nowrap">Suggest Colors</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="32"
-                  value={suggestCount}
-                  onChange={(e) => setSuggestCount(Math.max(1, Math.min(32, Number(e.target.value))))}
-                  className="w-12 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-xs text-center"
-                  title="Number of colors to suggest"
-                />
-                <button
-                  onClick={handleSuggestColors}
-                  disabled={isSuggesting || paletteMode === 'none'}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xs rounded transition-colors"
-                >
-                  {isSuggesting ? '...' : 'Go'}
-                </button>
-              </div>
-            </div>
-            
-            {suggestedColors.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-1 bg-gray-900 p-2 rounded border border-gray-700">
-                  {suggestedColors.map((color, idx) => (
-                    <div
-                      key={idx}
-                      className="w-8 h-8 rounded border border-gray-500 cursor-pointer hover:border-white"
-                      style={{ backgroundColor: color }}
-                      title={`${color} - Click to copy`}
-                      onClick={() => {
-                        navigator.clipboard.writeText(color);
-                      }}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={handleAddSuggestedToCustom}
-                  className="w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-                >
-                  Add to Custom Palette
-                </button>
-              </div>
-            )}
-            
-            <p className="text-xs text-gray-500">Analyzes the image to find dominant colors missing from your palette.</p>
-          </div>
           </div>
 
           {/* Execute button - sticky footer */}
@@ -735,8 +738,11 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
             </div>
 
             {isProcessing && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
-                    <div className="text-white font-semibold">Processing...</div>
+                <div className="absolute top-14 right-4 z-20 pointer-events-none">
+                    <div className="bg-gray-900/90 border border-gray-700 text-gray-200 text-xs px-3 py-1.5 rounded shadow-lg flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        Generating...
+                    </div>
                 </div>
             )}
 
