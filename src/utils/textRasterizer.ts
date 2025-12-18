@@ -14,6 +14,8 @@ export interface TextRasterizeOptions {
   maxWidth?: number; // Optional max width for word wrapping (in pixels at 1x scale)
   lineHeight?: number; // Line height multiplier (default 1.2)
   disableTransparency?: boolean; // If true, renders aliased text (no transparency/anti-aliasing)
+  letterSpacing?: number; // Letter spacing in pixels
+  fontWeight?: 'normal' | 'bold' | 'lighter' | string; // Font weight
 }
 
 export interface RasterizedText {
@@ -34,9 +36,16 @@ function measureText(
   fontFamily: string,
   maxWidth?: number,
   lineHeight: number = 1.2,
-  scale: number = HIGH_DPI_SCALE
+  scale: number = HIGH_DPI_SCALE,
+  letterSpacing: number = 0,
+  fontWeight: string = 'normal'
 ): { width: number; height: number; lines: string[] } {
-  ctx.font = `${fontSize * scale}px ${fontFamily}`;
+  ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+  // @ts-ignore - letterSpacing is a newer property
+  if (typeof ctx.letterSpacing !== 'undefined') {
+     // @ts-ignore
+    ctx.letterSpacing = `${letterSpacing * scale}px`;
+  }
   
   const lines: string[] = [];
   const paragraphs = text.split('\n');
@@ -106,7 +115,9 @@ export async function rasterizeText(options: TextRasterizeOptions): Promise<Rast
     textAlign = 'left',
     maxWidth,
     lineHeight = 1.2,
-    disableTransparency = false
+    disableTransparency = false,
+    letterSpacing = 0,
+    fontWeight = 'normal'
   } = options;
   
   // Load Google Font if needed
@@ -139,7 +150,9 @@ export async function rasterizeText(options: TextRasterizeOptions): Promise<Rast
     fontFamily,
     maxWidth,
     lineHeight,
-    scale
+    scale,
+    letterSpacing,
+    fontWeight
   );
   
   // Add padding (10px at 1x scale)
@@ -159,7 +172,12 @@ export async function rasterizeText(options: TextRasterizeOptions): Promise<Rast
   }
   
   // Set up rendering context
-  ctx.font = `${fontSize * scale}px ${fontFamily}`;
+  ctx.font = `${fontWeight} ${fontSize * scale}px ${fontFamily}`;
+  // @ts-ignore
+  if (typeof ctx.letterSpacing !== 'undefined') {
+    // @ts-ignore
+    ctx.letterSpacing = `${letterSpacing * scale}px`;
+  }
   ctx.fillStyle = color;
   ctx.textBaseline = 'top';
   

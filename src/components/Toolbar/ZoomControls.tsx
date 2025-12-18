@@ -28,7 +28,7 @@ function ZoomControls() {
   };
 
   const handleResetZoom = () => {
-    handleZoom(100);
+    setViewport({ zoom: 100, panX: 0, panY: 0 });
   };
 
   return (
@@ -80,9 +80,9 @@ function ZoomControls() {
       <button
         onClick={handleResetZoom}
         className="px-2 py-1 text-xs font-medium text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded transition-colors"
-        title="Reset zoom to 100%"
+        title="Reset zoom to 100% and center canvas"
       >
-        100%
+        Reset
       </button>
     </div>
   );
