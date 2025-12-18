@@ -83,7 +83,7 @@ interface CompositorStore extends AppState {
   setProjectMetadata: (metadata: Partial<ProjectMetadata>) => void;
 
   // Layer operations
-  addLayer: (layer: Omit<Layer, 'id'>) => void;
+  addLayer: (layer: Omit<Layer, 'id'> & { id?: string }) => void;
   removeLayer: (layerId: string) => void;
   updateLayer: (layerId: string, updates: Partial<Layer>) => void;
   duplicateLayer: (layerId: string) => void;
@@ -204,7 +204,7 @@ const useCompositorStore = create<CompositorStore>()(
               ...state.project.layers,
               {
                 ...layer,
-                id: `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                id: layer.id || `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               },
             ],
             modified: new Date().toISOString(),

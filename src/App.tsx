@@ -1,14 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Canvas from './components/Canvas/Canvas';
 import LayerPanel from './components/LayerPanel/LayerPanel';
 import PropertyPanel from './components/PropertyPanel/PropertyPanel';
 import Toolbar from './components/Toolbar/Toolbar';
 import DebugHistoryModal from './components/DebugMenu/DebugHistoryModal';
+import TextLayerModal from './components/Modals/TextLayerModal';
 import useCompositorStore from './store/compositorStore';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useAutoHistory from './hooks/useAutoHistory';
 import useDebugMenu from './hooks/useDebugMenu';
 import { useInitializePreferences } from './hooks/useLocalStorage';
+import { Layer } from './types/compositor.types';
 
 /**
  * Main application component
@@ -17,6 +19,10 @@ import { useInitializePreferences } from './hooks/useLocalStorage';
 function App() {
   const project = useCompositorStore((state) => state.project);
   const isDirty = useCompositorStore((state) => state.isDirty);
+  
+  // Text layer modal state
+  const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [editingTextLayer, setEditingTextLayer] = useState<Layer | undefined>(undefined);
 
   // Initialize preferences from localStorage
   useInitializePreferences();
@@ -29,6 +35,25 @@ function App() {
 
   // Initialize debug menu
   const { isOpen: isDebugMenuOpen, setIsOpen: setIsDebugMenuOpen } = useDebugMenu();
+  
+  // Handle opening text modal for new or existing layer
+  const handleOpenTextModal = (layer?: Layer) => {
+    setEditingTextLayer(layer);
+    setIsTextModalOpen(true);
+  };
+  
+  const handleCloseTextModal = () => {
+    setIsTextModalOpen(false);
+    setEditingTextLayer(undefined);
+  };
+  
+  // Expose text modal handler globally so Toolbar and LayerItem can access it
+  useEffect(() => {
+    (window as any).openTextLayerModal = handleOpenTextModal;
+    return () => {
+      delete (window as any).openTextLayerModal;
+    };
+  }, []);
 
   // Handle unsaved changes warning
   useEffect(() => {
@@ -79,6 +104,13 @@ function App() {
       <DebugHistoryModal
         isOpen={isDebugMenuOpen}
         onClose={() => setIsDebugMenuOpen(false)}
+      />
+      
+      {/* Text Layer Modal */}
+      <TextLayerModal
+        isOpen={isTextModalOpen}
+        onClose={handleCloseTextModal}
+        existingLayer={editingTextLayer}
       />
     </div>
   );

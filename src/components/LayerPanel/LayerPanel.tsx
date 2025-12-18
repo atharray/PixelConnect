@@ -142,6 +142,14 @@ function LayerPanel() {
           </button>
 
           <button
+            onClick={() => (window as any).openTextLayerModal?.()}
+            className="flex-1 min-w-16 px-2 py-1 text-xs font-medium text-blue-400 hover:text-blue-300 bg-panel-bg hover:bg-blue-900 rounded transition-colors flex items-center justify-center gap-1"
+            title="Create text layer"
+          >
+            <span className="font-bold">T</span>
+          </button>
+
+          <button
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 min-w-16 px-2 py-1 text-xs font-medium text-green-400 hover:text-green-300 bg-panel-bg hover:bg-green-900 rounded transition-colors"
             title="Upload additional images"

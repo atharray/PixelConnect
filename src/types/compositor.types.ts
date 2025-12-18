@@ -31,6 +31,14 @@ export interface Layer {
   opacity: number; // 0.0 to 1.0 (1.0 = fully opaque)
   width: number; // Image width in pixels
   height: number; // Image height in pixels
+  
+  // Optional text layer metadata (enables re-editing)
+  textContent?: string; // Original text content with \n for line breaks
+  fontSize?: number; // Font size in pixels
+  fontFamily?: string; // Font family name (system or Google Font)
+  fontColor?: string; // Hex color for text
+  textAlign?: 'left' | 'center' | 'right'; // Text alignment
+  disableTransparency?: boolean; // If true, text is rendered without anti-aliasing
 }
 
 // Viewport state

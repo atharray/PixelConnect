@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import { Layer } from '../../types/compositor.types';
+import { isTextLayer } from '../../utils/textRasterizer';
 
 interface LayerItemProps {
   layer: Layer;
@@ -224,13 +225,19 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
         </button>
         
         {/* Thumbnail */}
-        <div className="w-8 h-8 flex-shrink-0 bg-canvas-bg border border-gray-600 rounded overflow-hidden">
+        <div className="w-8 h-8 flex-shrink-0 bg-canvas-bg border border-gray-600 rounded overflow-hidden relative">
           <img
             src={layer.imageData}
             alt={layer.name}
             className="w-full h-full object-contain"
             style={{ imageRendering: 'pixelated' }}
           />
+          {/* Text Layer Badge */}
+          {isTextLayer(layer) && (
+            <div className="absolute bottom-0 right-0 bg-blue-600 text-white text-[8px] font-bold px-1 rounded-tl" title="Text Layer">
+              T
+            </div>
+          )}
         </div>
 
         {/* Layer Name */}
@@ -314,6 +321,19 @@ function LayerItem({ layer, isSelected }: LayerItemProps) {
 
       {/* Layer Controls */}
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Edit Text Button (only for text layers) */}
+        {isTextLayer(layer) && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              (window as any).openTextLayerModal?.(layer);
+            }}
+            className="flex-1 px-1 py-1 text-xs bg-blue-700 hover:bg-blue-600 rounded transition-colors flex items-center justify-center"
+            title="Edit text"
+          >
+            <span className="font-bold text-sm">T</span>
+          </button>
+        )}
         <button
           onClick={handleBringToFront}
           className="flex-1 px-1 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors flex items-center justify-center"
