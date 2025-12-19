@@ -15,6 +15,8 @@ import {
   HistoryState,
   UIState
 } from '../types/compositor.types';
+import { blobToDataUrl, dataUrlToBlob, compositeLayersToBlob } from '../utils/imageProcessing';
+import { rasterizeText } from '../utils/textRasterizer';
 
 // Default project configuration
 const DEFAULT_PROJECT_DATA: ProjectData = {
@@ -122,7 +124,9 @@ interface CompositorStore extends AppState {
   toggleSelectionTools: () => void;
   setSelectionBorderAnimationSpeed: (speed: number) => void;
   copySelectedLayers: () => void;
+  copySelectedLayersToClipboard: () => Promise<void>;
   pasteSelectedLayers: () => void;
+  pasteFromClipboard: () => Promise<void>;
 
   // Canvas operations
   cropCanvasToLayers: () => void;
@@ -794,6 +798,38 @@ const useCompositorStore = create<CompositorStore>()(
         }));
       },
 
+      copySelectedLayersToClipboard: async () => {
+        try {
+          const state = useCompositorStore.getState();
+          const selectedLayers = state.project.layers.filter((l) =>
+            state.selectedLayerIds.includes(l.id)
+          );
+
+          if (selectedLayers.length === 0) {
+            console.warn('No layers selected to copy');
+            return;
+          }
+
+          let blob: Blob;
+
+          if (selectedLayers.length === 1) {
+            // Single layer: copy directly
+            blob = dataUrlToBlob(selectedLayers[0].imageData);
+          } else {
+            // Multiple layers: composite them together
+            // Sort by zIndex to maintain layer order
+            const sortedLayers = selectedLayers.sort((a, b) => a.zIndex - b.zIndex);
+            blob = await compositeLayersToBlob(sortedLayers);
+          }
+
+          // Write to system clipboard
+          const clipboardItem = new ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([clipboardItem]);
+        } catch (error) {
+          console.error('Failed to copy layers to clipboard:', error);
+        }
+      },
+
       pasteSelectedLayers: () => {
         set((state) => {
           const maxZIndex = Math.max(...state.project.layers.map((l) => l.zIndex), 0);
@@ -816,6 +852,127 @@ const useCompositorStore = create<CompositorStore>()(
             isDirty: true,
           };
         });
+      },
+
+      pasteFromClipboard: async () => {
+        try {
+          // Try Clipboard API first (for modern browsers)
+          if (navigator.clipboard) {
+            try {
+              // Try to read image from clipboard
+              const clipboardItems = await navigator.clipboard.read();
+              
+              for (const item of clipboardItems) {
+                // Check for image types
+                const imageTypes = Array.from(item.types).filter((type) =>
+                  type.startsWith('image/')
+                );
+
+                if (imageTypes.length > 0) {
+                  // Handle image paste
+                  const imageType = imageTypes[0];
+                  const blob = await item.getType(imageType);
+                  const dataUrl = await blobToDataUrl(blob);
+
+                  // Get image dimensions
+                  const img = new Image();
+                  img.src = dataUrl;
+
+                  await new Promise<void>((resolve, reject) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => reject(new Error('Failed to load image'));
+                  });
+
+                  const state = useCompositorStore.getState();
+                  const maxZIndex = Math.max(...state.project.layers.map((l) => l.zIndex), 0);
+
+                  useCompositorStore.setState((prevState) => ({
+                    project: {
+                      ...prevState.project,
+                      layers: [
+                        ...prevState.project.layers,
+                        {
+                          id: `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                          name: 'Pasted Image',
+                          imageData: dataUrl,
+                          x: 0,
+                          y: 0,
+                          zIndex: maxZIndex + 1,
+                          visible: true,
+                          locked: false,
+                          opacity: 1.0,
+                          width: img.naturalWidth,
+                          height: img.naturalHeight,
+                        },
+                      ],
+                      modified: new Date().toISOString(),
+                    },
+                    isDirty: true,
+                  }));
+                  return;
+                }
+              }
+
+              // Fall through to text reading if no image found
+            } catch (error) {
+              // Image reading failed, try text
+              console.debug('Image paste failed, trying text paste:', error);
+            }
+
+            // Try to read text from clipboard
+            try {
+              const text = await navigator.clipboard.readText();
+              if (text.trim()) {
+                // Create text layer
+                const rasterized = await rasterizeText({
+                  text,
+                  fontSize: 16,
+                  fontFamily: 'Arial',
+                  color: '#000000',
+                  textAlign: 'left',
+                  lineHeight: 1.2,
+                });
+
+                const state = useCompositorStore.getState();
+                const maxZIndex = Math.max(...state.project.layers.map((l) => l.zIndex), 0);
+
+                useCompositorStore.setState((prevState) => ({
+                  project: {
+                    ...prevState.project,
+                    layers: [
+                      ...prevState.project.layers,
+                      {
+                        id: `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        name: `Text: ${text.substring(0, 20)}${text.length > 20 ? '...' : ''}`,
+                        imageData: rasterized.dataUrl,
+                        x: 0,
+                        y: 0,
+                        zIndex: maxZIndex + 1,
+                        visible: true,
+                        locked: false,
+                        opacity: 1.0,
+                        width: rasterized.width,
+                        height: rasterized.height,
+                        textContent: text,
+                        fontSize: 16,
+                        fontFamily: 'Arial',
+                        fontColor: '#000000',
+                        textAlign: 'left',
+                        lineHeight: 1.2,
+                      },
+                    ],
+                    modified: new Date().toISOString(),
+                  },
+                  isDirty: true,
+                }));
+              }
+            } catch (error) {
+              console.debug('Text paste failed:', error);
+            }
+          }
+        } catch (error) {
+          console.error('Clipboard paste error:', error);
+        }
       },
 
       // Canvas operations

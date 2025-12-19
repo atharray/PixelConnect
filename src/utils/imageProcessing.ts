@@ -145,3 +145,135 @@ export const applyTransparencyMask = (
     }
   });
 };
+
+/**
+ * Converts a Blob to a base64 data URI
+ * Used for clipboard image pasting
+ */
+export const blobToDataUrl = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      resolve(result);
+    };
+    reader.onerror = () => {
+      reject(new Error('Failed to read blob'));
+    };
+    reader.readAsDataURL(blob);
+  });
+};
+
+/**
+ * Converts a base64 data URI to a Blob
+ * Preserves transparency for PNG images
+ */
+export const dataUrlToBlob = (dataUrl: string): Blob => {
+  const parts = dataUrl.split(',');
+  const mimeMatch = parts[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const bstr = atob(parts[1]);
+  const n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  
+  for (let i = 0; i < n; i++) {
+    u8arr[i] = bstr.charCodeAt(i);
+  }
+  
+  return new Blob([u8arr], { type: mime });
+};
+
+/**
+ * Composite multiple layers onto a canvas, preserving transparency
+ * Layers are composited in z-index order
+ */
+export const compositeLayersToBlob = (
+  layers: Array<{
+    imageData: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    opacity: number;
+  }>
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    if (layers.length === 0) {
+      reject(new Error('No layers to composite'));
+      return;
+    }
+
+    // Calculate bounding box
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    for (const layer of layers) {
+      minX = Math.min(minX, layer.x);
+      minY = Math.min(minY, layer.y);
+      maxX = Math.max(maxX, layer.x + layer.width);
+      maxY = Math.max(maxY, layer.y + layer.height);
+    }
+
+    const width = Math.ceil(maxX - minX);
+    const height = Math.ceil(maxY - minY);
+
+    // Create canvas with transparent background
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+      reject(new Error('Failed to get canvas context'));
+      return;
+    }
+
+    // Clear canvas (transparent background)
+    ctx.clearRect(0, 0, width, height);
+
+    let loadedCount = 0;
+    let hasError = false;
+
+    // Load and composite each layer
+    for (const layer of layers) {
+      const img = new Image();
+      img.onload = () => {
+        if (hasError) return;
+
+        ctx.globalAlpha = layer.opacity;
+        ctx.drawImage(
+          img,
+          layer.x - minX,
+          layer.y - minY,
+          layer.width,
+          layer.height
+        );
+
+        loadedCount++;
+        if (loadedCount === layers.length) {
+          // All layers loaded and composited
+          ctx.globalAlpha = 1.0; // Reset alpha
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error('Failed to create blob from canvas'));
+              }
+            },
+            'image/png'
+          );
+        }
+      };
+
+      img.onerror = () => {
+        hasError = true;
+        reject(new Error(`Failed to load image for layer at (${layer.x}, ${layer.y})`));
+      };
+
+      img.src = layer.imageData;
+    }
+  });
+};

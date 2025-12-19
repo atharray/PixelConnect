@@ -2,6 +2,8 @@ import { useRef } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import CanvasRenderer from './CanvasRenderer';
 import { deserializeProject } from '../../utils/projectSerializer';
+import { blobToDataUrl } from '../../utils/imageProcessing';
+import { rasterizeText } from '../../utils/textRasterizer';
 
 /**
  * Canvas container component
@@ -104,8 +106,109 @@ function Canvas() {
     }
   };
 
+  /**
+   * Handle paste event for fallback clipboard support
+   * Triggered when user pastes into the canvas area
+   */
+  const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      // Handle image paste
+      if (item.type.startsWith('image/')) {
+        try {
+          const blob = item.getAsFile();
+          if (!blob) continue;
+
+          const dataUrl = await blobToDataUrl(blob);
+
+          // Get image dimensions
+          const img = new Image();
+          img.src = dataUrl;
+
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Failed to load image'));
+          });
+
+          const maxZIndex = Math.max(
+            ...useCompositorStore.getState().project.layers.map((l) => l.zIndex),
+            0
+          );
+
+          addLayer({
+            name: 'Pasted Image',
+            imageData: dataUrl,
+            x: 0,
+            y: 0,
+            zIndex: maxZIndex + 1,
+            visible: true,
+            locked: false,
+            opacity: 1.0,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          });
+
+          // Only handle the first image
+          break;
+        } catch (error) {
+          console.error('Error pasting image:', error);
+        }
+      }
+    }
+
+    // Try to get text from clipboard if no image was found
+    if (event.clipboardData?.types.includes('text/plain')) {
+      try {
+        const text = event.clipboardData.getData('text/plain');
+        if (text.trim()) {
+          const rasterized = await rasterizeText({
+            text,
+            fontSize: 16,
+            fontFamily: 'Arial',
+            color: '#000000',
+            textAlign: 'left',
+            lineHeight: 1.2,
+          });
+
+          const maxZIndex = Math.max(
+            ...useCompositorStore.getState().project.layers.map((l) => l.zIndex),
+            0
+          );
+
+          addLayer({
+            id: `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: `Text: ${text.substring(0, 20)}${text.length > 20 ? '...' : ''}`,
+            imageData: rasterized.dataUrl,
+            x: 0,
+            y: 0,
+            zIndex: maxZIndex + 1,
+            visible: true,
+            locked: false,
+            opacity: 1.0,
+            width: rasterized.width,
+            height: rasterized.height,
+            textContent: text,
+            fontSize: 16,
+            fontFamily: 'Arial',
+            fontColor: '#000000',
+            textAlign: 'left',
+            lineHeight: 1.2,
+          });
+        }
+      } catch (error) {
+        console.error('Error pasting text:', error);
+      }
+    }
+  };
+
   return (
-    <div className="w-full h-full flex flex-col relative">
+    <div className="w-full h-full flex flex-col relative" onPaste={handlePaste}>
       {/* Canvas Area */}
       <div className="flex-1 relative overflow-hidden">
         <CanvasRenderer />

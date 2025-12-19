@@ -17,7 +17,9 @@ export function useKeyboardShortcuts() {
   const undo = useCompositorStore((state) => state.undo);
   const redo = useCompositorStore((state) => state.redo);
   const copySelectedLayers = useCompositorStore((state) => state.copySelectedLayers);
+  const copySelectedLayersToClipboard = useCompositorStore((state) => state.copySelectedLayersToClipboard);
   const pasteSelectedLayers = useCompositorStore((state) => state.pasteSelectedLayers);
+  const pasteFromClipboard = useCompositorStore((state) => state.pasteFromClipboard);
   const reorderSelectedLayers = useCompositorStore((state) => state.reorderSelectedLayers);
 
   const isPanningRef = useRef(false);
@@ -182,20 +184,15 @@ export function useKeyboardShortcuts() {
           event.preventDefault();
           // console.log(`[DEBUG] Copy triggered by Ctrl+C - copying ${selectedLayerIds.length} layer(s)`);
           copySelectedLayers();
+          copySelectedLayersToClipboard();
         }
         return;
       }
 
-      // Ctrl/Cmd + V: Paste copied layers
+      // Ctrl/Cmd + V: Paste from clipboard
       if (isCtrlOrCmd && event.key === 'v') {
         event.preventDefault();
-        const clipboardLayers = useCompositorStore.getState().ui.clipboardLayers;
-        if (clipboardLayers.length > 0) {
-          // console.log(`[DEBUG] Paste triggered by Ctrl+V - pasting ${clipboardLayers.length} layer(s)`);
-          pasteSelectedLayers();
-        } else {
-          console.warn('[DEBUG] Paste triggered but clipboard is empty');
-        }
+        pasteFromClipboard();
         return;
       }
 
@@ -301,7 +298,9 @@ export function useKeyboardShortcuts() {
     undo,
     redo,
     copySelectedLayers,
+    copySelectedLayersToClipboard,
     pasteSelectedLayers,
+    pasteFromClipboard,
     reorderSelectedLayers,
   ]);
 }
