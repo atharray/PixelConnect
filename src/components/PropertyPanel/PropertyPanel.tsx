@@ -6,6 +6,7 @@ import ColorAnalysis from './ColorAnalysis';
 import ShapeProperties from './ShapeProperties';
 import TransparencyMaskModal from '../Modals/TransparencyMaskModal';
 import PixelatorModal from '../Modals/PixelatorModal';
+import CropModal from '../Modals/CropModal';
 import { useState } from 'react';
 
 /**
@@ -22,6 +23,7 @@ function PropertyPanel() {
   const [isModifyMenuOpen, setIsModifyMenuOpen] = useState(false);
   const [isTransparencyModalOpen, setIsTransparencyModalOpen] = useState(false);
   const [isPixelatorModalOpen, setIsPixelatorModalOpen] = useState(false);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-canvas-bg overflow-hidden">
@@ -95,6 +97,15 @@ function PropertyPanel() {
                     >
                       Pixelator
                     </button>
+                    <button
+                      onClick={() => {
+                        setIsCropModalOpen(true);
+                        setIsModifyMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-slate-700 hover:text-white"
+                    >
+                      Crop
+                    </button>
                   </div>
                 )}
               </div>
@@ -113,6 +124,14 @@ function PropertyPanel() {
               <PixelatorModal 
                 isOpen={isPixelatorModalOpen}
                 onClose={() => setIsPixelatorModalOpen(false)}
+                layer={selectedLayers[0]}
+              />
+            )}
+
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (
+              <CropModal
+                isOpen={isCropModalOpen}
+                onClose={() => setIsCropModalOpen(false)}
                 layer={selectedLayers[0]}
               />
             )}

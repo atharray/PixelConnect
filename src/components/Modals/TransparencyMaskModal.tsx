@@ -21,6 +21,7 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
   const [zoom, setZoom] = useState<number>(1);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [useTemplatePalette, setUseTemplatePalette] = useState<boolean>(true);
+  const [hasInitialFit, setHasInitialFit] = useState<boolean>(false);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const updateLayer = useCompositorStore((state) => state.updateLayer);
@@ -40,6 +41,7 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
       }
     }, 100);
 
+    setHasInitialFit(false);
     return () => clearTimeout(timer);
   }, [threshold, layer.imageData, isOpen]);
 
@@ -63,8 +65,27 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
     setZoom((prev) => Math.max(prev - 0.25, 0.1));
   };
 
+  const calculateFitZoom = (width: number, height: number) => {
+    if (!previewContainerRef.current) return 1;
+    
+    const containerWidth = previewContainerRef.current.clientWidth;
+    const containerHeight = previewContainerRef.current.clientHeight;
+    
+    if (containerWidth <= 0 || containerHeight <= 0) return 1;
+
+    const scaleX = containerWidth / width;
+    const scaleY = containerHeight / height;
+    
+    const newZoom = Math.min(scaleX, scaleY);
+    return Math.max(0.1, newZoom * 0.9);
+  };
+
   const handleResetZoom = () => {
-    setZoom(1);
+    if (imageDimensions) {
+      setZoom(calculateFitZoom(imageDimensions.width, imageDimensions.height));
+    } else {
+      setZoom(1);
+    }
   };
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -74,6 +95,16 @@ const TransparencyMaskModal: React.FC<TransparencyMaskModalProps> = ({
       height: img.naturalHeight,
     });
   };
+
+  useEffect(() => {
+    if (imageDimensions && previewContainerRef.current && !hasInitialFit) {
+      setTimeout(() => {
+        const fitZoom = calculateFitZoom(imageDimensions.width, imageDimensions.height);
+        setZoom(fitZoom);
+        setHasInitialFit(true);
+      }, 100);
+    }
+  }, [imageDimensions, hasInitialFit]);
 
   return (
     <DraggableModal isOpen={isOpen} title="Transparency Mask" onClose={onClose}>
