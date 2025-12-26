@@ -384,7 +384,7 @@ function CanvasRenderer() {
 
     const direction = e.deltaY > 0 ? -1 : 1;
     const currentZoom = project.viewport.zoom;
-    const zoomLevels = [25, 50, 75, 100, 125, 150, 200, 250, 300, 400, 500, 600, 800, 1200, 1600, 3200];
+    const zoomLevels = [25, 33, 50, 66, 100, 150, 200, 400, 800, 1600, 3200];
 
     let newZoom = currentZoom;
     if (direction > 0) {

@@ -45,10 +45,11 @@ const ShapeModal: React.FC<ShapeModalProps> = ({ isOpen, onClose, existingLayer 
       originalVisibilityRef.current = existingLayer.visible;
     }
   }, [existingLayer]);
-  // Auto-generate preview when inputs change
+  // Auto-generate preview when inputs change (only if modal is open)
   useEffect(() => {
+    if (!isOpen) return;
     generatePreview();
-  }, [shapeType, size, stretchX, stretchY, color]);
+  }, [shapeType, size, stretchX, stretchY, color, isOpen]);
 
   // Handle canvas preview
   useEffect(() => {

@@ -304,7 +304,7 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
         disabled={isAnalyzing}
         className="w-full px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-xs font-medium text-blue-400 rounded transition-colors"
       >
-        {isAnalyzing ? 'Analyzing...' : 'Analyze Colors (no transparent pixels)'}
+        {isAnalyzing ? 'Analyzing...' : 'Get Colors...'}
       </button>
 
       {/* RGB Results */}
@@ -336,7 +336,7 @@ function ColorAnalysis({ layer }: { layer: Layer }) {
         disabled={isAnalyzing}
         className="w-full px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-xs font-medium text-purple-400 rounded transition-colors"
       >
-        {isAnalyzing ? 'Analyzing...' : 'Analyze Colors (with transparent pixels and alpha channel)'}
+        {isAnalyzing ? 'Analyzing...' : 'Get Colors (inc. transparent pixels)...'}
       </button>
 
       {/* RGBA Results */}

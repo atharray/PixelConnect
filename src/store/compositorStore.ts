@@ -1046,8 +1046,15 @@ const useCompositorStore = create<CompositorStore>()(
       },
 
       loadProject: (projectData: ProjectData) => {
+        // Filter out preview layers before loading
+        const filteredProject = {
+          ...projectData,
+          layers: projectData.layers.filter(
+            l => l.id !== '__text_canvas_preview__' && l.id !== '__shape_canvas_preview__'
+          )
+        };
         set({
-          project: projectData,
+          project: filteredProject,
           selectedLayerIds: [],
           isDirty: false,
           history: DEFAULT_HISTORY,

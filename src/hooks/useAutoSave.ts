@@ -19,7 +19,14 @@ export function useAutoSave() {
         const cachedProject = await loadFromCache();
         if (cachedProject) {
           console.log('[AutoSave] Restoring cached project...');
-          loadProject(cachedProject);
+          // Filter out preview layers before loading
+          const filtered = {
+            ...cachedProject,
+            layers: cachedProject.layers.filter(
+              l => l.id !== '__text_canvas_preview__' && l.id !== '__shape_canvas_preview__'
+            )
+          };
+          loadProject(filtered);
         }
       } catch (error) {
         console.error('[AutoSave] Failed to restore project:', error);
@@ -40,8 +47,15 @@ export function useAutoSave() {
     }
 
     timeoutRef.current = setTimeout(() => {
+      // Filter out preview layers before saving
+      const projectToSave = {
+        ...project,
+        layers: project.layers.filter(
+          l => l.id !== '__text_canvas_preview__' && l.id !== '__shape_canvas_preview__'
+        )
+      };
       // console.log('[AutoSave] Saving project to cache...');
-      saveToCache(project);
+      saveToCache(projectToSave);
     }, AUTO_SAVE_DELAY);
 
     return () => {

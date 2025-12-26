@@ -184,6 +184,149 @@ export const dataUrlToBlob = (dataUrl: string): Blob => {
 };
 
 /**
+ * Remove background by flood-filling from image corners using color tolerance.
+ * Optionally return a heatmap (remaining pixels shown in red) instead of normal alpha mask.
+ *
+ * @param imageData - base64 data URL
+ * @param tolerance - color distance tolerance (0-255)
+ * @param makeHeatmap - if true, produces a red heatmap showing kept pixels
+ * @returns Promise<string> - processed data URL (PNG)
+ */
+export const removeBackground = (
+  imageData: string,
+  tolerance: number = 30,
+  makeHeatmap: boolean = false
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth;
+          const h = img.naturalHeight;
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          const imageDataObj = ctx.getImageData(0, 0, w, h);
+          const data = imageDataObj.data;
+
+          const visited = new Uint8Array(w * h);
+          const maskBg = new Uint8Array(w * h); // 1 = background
+
+          const pixelIndex = (x: number, y: number) => y * w + x;
+
+          const colorAt = (x: number, y: number) => {
+            const i = (y * w + x) * 4;
+            return { r: data[i], g: data[i + 1], b: data[i + 2], a: data[i + 3] };
+          };
+
+          const colorDistance = (c1: any, c2: any) => {
+            const dr = c1.r - c2.r;
+            const dg = c1.g - c2.g;
+            const db = c1.b - c2.b;
+            return Math.sqrt(dr * dr + dg * dg + db * db);
+          };
+
+          // Seed points: four corners (and small 3x3 around them)
+          const seeds: Array<{ x: number; y: number }> = [];
+          const pushSeeds = (cx: number, cy: number) => {
+            for (let yy = Math.max(0, cy - 1); yy <= Math.min(h - 1, cy + 1); yy++) {
+              for (let xx = Math.max(0, cx - 1); xx <= Math.min(w - 1, cx + 1); xx++) {
+                seeds.push({ x: xx, y: yy });
+              }
+            }
+          };
+          pushSeeds(0, 0);
+          pushSeeds(w - 1, 0);
+          pushSeeds(0, h - 1);
+          pushSeeds(w - 1, h - 1);
+
+          // Use first seed color as reference per seed
+          const queue: Array<{ x: number; y: number; base: { r: number; g: number; b: number } }> = [];
+          for (const s of seeds) {
+            const c = colorAt(s.x, s.y);
+            queue.push({ x: s.x, y: s.y, base: c });
+          }
+
+          const inBounds = (x: number, y: number) => x >= 0 && x < w && y >= 0 && y < h;
+
+          while (queue.length > 0) {
+            const { x, y, base } = queue.shift() as any;
+            const idx = pixelIndex(x, y);
+            if (visited[idx]) continue;
+            visited[idx] = 1;
+
+            const cur = colorAt(x, y);
+            const dist = colorDistance(cur, base);
+            if (dist <= tolerance) {
+              maskBg[idx] = 1;
+              // enqueue neighbors
+              const nbs = [
+                { x: x + 1, y },
+                { x: x - 1, y },
+                { x, y: y + 1 },
+                { x, y: y - 1 },
+              ];
+              for (const nb of nbs) {
+                if (inBounds(nb.x, nb.y)) {
+                  const nidx = pixelIndex(nb.x, nb.y);
+                  if (!visited[nidx]) {
+                    queue.push({ x: nb.x, y: nb.y, base });
+                  }
+                }
+              }
+            }
+          }
+
+          // Apply mask: if maskBg==1 => transparent, else keep. If makeHeatmap, color kept pixels red.
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const pi = (y * w + x) * 4;
+              const m = maskBg[pixelIndex(x, y)];
+              if (m === 1) {
+                // background => transparent
+                data[pi + 3] = 0;
+              } else {
+                // kept pixel
+                if (makeHeatmap) {
+                  data[pi] = 255;
+                  data[pi + 1] = 0;
+                  data[pi + 2] = 0;
+                  data[pi + 3] = 255;
+                } else {
+                  data[pi + 3] = 255;
+                }
+              }
+            }
+          }
+
+          ctx.putImageData(imageDataObj, 0, 0);
+          resolve(canvas.toDataURL());
+        } catch (err) {
+          console.error('removeBackground processing error:', err);
+          reject(err);
+        }
+      };
+      img.onerror = (err) => {
+        console.error('removeBackground load error:', err);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = imageData;
+    } catch (err) {
+      console.error('removeBackground init error:', err);
+      reject(err);
+    }
+  });
+};
+
+/**
  * Composite multiple layers onto a canvas, preserving transparency
  * Layers are composited in z-index order
  */

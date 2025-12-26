@@ -529,7 +529,8 @@ function rgbToHex(rgb: { r: number; g: number; b: number }): string {
 async function suggestMissingColors(
     imageData: ImageData, 
     paletteHex: string[], 
-    numToSuggest: number
+    numToSuggest: number,
+    preferDistinct: boolean = false
 ): Promise<string[]> {
     if (paletteHex.length === 0) return [];
     
@@ -553,9 +554,13 @@ async function suggestMissingColors(
     
     if (pixelArray.length === 0) return [];
     
-    // Run K-Means to find 128 dominant clusters
-    // Reduce k if we have fewer pixels than k
-    const k = Math.min(128, pixelArray.length);
+    // Run K-Means to find dominant clusters
+    // If preferDistinct is true, use double the clusters for better diversity
+    let k = Math.min(128, pixelArray.length);
+    if (preferDistinct) {
+        k = Math.min(256, pixelArray.length);
+    }
+    
     const kmeansResult = await kmeans(pixelArray, k);
     const centroids = kmeansResult.centroids;
     const assignments = kmeansResult.assignments;
@@ -567,7 +572,7 @@ async function suggestMissingColors(
     }
     
     // Calculate error for each centroid
-    const centroidErrors: { hex: string; error: number; count: number; totalError: number }[] = [];
+    const centroidErrors: { hex: string; rgb: RGB; error: number; count: number; totalError: number }[] = [];
     
     for (let i = 0; i < centroids.length; i++) {
         const c = centroids[i];
@@ -591,27 +596,65 @@ async function suggestMissingColors(
         
         centroidErrors.push({
             hex: rgbToHex(centroidColorRGB),
+            rgb: centroidColorRGB,
             error: minDeltaE,
             count: count,
             totalError: totalError
         });
     }
     
-    // Sort by total error (descending) and return top N
+    // Sort by total error (descending)
     centroidErrors.sort((a, b) => b.totalError - a.totalError);
-    return centroidErrors.slice(0, numToSuggest).map(c => c.hex);
+    
+    // If not preferring distinct, just return top N
+    if (!preferDistinct) {
+        return centroidErrors.slice(0, numToSuggest).map(c => c.hex);
+    }
+    
+    // Greedy selection for distinct colors
+    // Start with highest error, then greedily add colors that are:
+    // 1. High error (good candidates)
+    // 2. Sufficiently distinct from already-selected colors (ΔE > 30)
+    const selected: typeof centroidErrors = [];
+    const minDistinctness = 30; // CIELAB distance threshold
+    
+    for (const candidate of centroidErrors) {
+        if (selected.length >= numToSuggest) break;
+        
+        if (selected.length === 0) {
+            // Always take the highest error color first
+            selected.push(candidate);
+        } else {
+            // Check if this color is distinct from all selected colors
+            let isDistinct = true;
+            const candidateLAB = rgbToLab(candidate.rgb);
+            
+            for (const sel of selected) {
+                const selLAB = rgbToLab(sel.rgb);
+                const deltaE = getDeltaE(candidateLAB, selLAB);
+                if (deltaE < minDistinctness) {
+                    isDistinct = false;
+                    break;
+                }
+            }
+            
+            if (isDistinct) {
+                selected.push(candidate);
+            }
+        }
+    }
+    
+    return selected.map(c => c.hex);
 }
 
 function applyColorModifiers(imageData: ImageData, brightness: number, contrast: number, saturation: number): ImageData {
+  // ... [Keep existing implementation] ...
   const data = imageData.data;
   const width = imageData.width;
   const height = imageData.height;
   const newImageData = new ImageData(new Uint8ClampedArray(data), width, height);
   const d = newImageData.data;
 
-  // Pre-calculate contrast factor
-  // Contrast is usually -100 to 100.
-  // Formula: factor = (259 * (contrast + 255)) / (255 * (259 - contrast))
   const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
   for (let i = 0; i < d.length; i += 4) {
@@ -619,65 +662,287 @@ function applyColorModifiers(imageData: ImageData, brightness: number, contrast:
     let g = d[i+1];
     let b = d[i+2];
 
-    // 1. Brightness
-    if (brightness !== 0) {
-        r += brightness;
-        g += brightness;
-        b += brightness;
-    }
+    // Brightness
+    r += brightness;
+    g += brightness;
+    b += brightness;
 
-    // 2. Contrast
-    if (contrast !== 0) {
-        r = contrastFactor * (r - 128) + 128;
-        g = contrastFactor * (g - 128) + 128;
-        b = contrastFactor * (b - 128) + 128;
-    }
+    // Contrast
+    r = contrastFactor * (r - 128) + 128;
+    g = contrastFactor * (g - 128) + 128;
+    b = contrastFactor * (b - 128) + 128;
 
-    // 3. Saturation
+    // Saturation
     if (saturation !== 0) {
         const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
         const satMult = 1 + (saturation / 100);
-        
         r = gray + (r - gray) * satMult;
         g = gray + (g - gray) * satMult;
         b = gray + (b - gray) * satMult;
     }
 
-    d[i] = r;
-    d[i+1] = g;
-    d[i+2] = b;
+    d[i] = Math.max(0, Math.min(255, r));
+    d[i+1] = Math.max(0, Math.min(255, g));
+    d[i+2] = Math.max(0, Math.min(255, b));
   }
 
   return newImageData;
 }
 
+// --- Preprocessing Filters ---
+
+// 1. Median Filter: excellent for removing noise/dithering while keeping edges sharp
+function applyMedianFilter(imageData: ImageData, strength: number): ImageData {
+  const src = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  const dest = new ImageData(new Uint8ClampedArray(src), width, height);
+  const destData = dest.data;
+
+  // Map strength 0-100 to radius 1-10
+  const radius = Math.max(1, Math.floor((strength / 100) * 10)); 
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      
+      const rValues = [];
+      const gValues = [];
+      const bValues = [];
+
+      for (let ky = -radius; ky <= radius; ky++) {
+        for (let kx = -radius; kx <= radius; kx++) {
+          const py = Math.min(height - 1, Math.max(0, y + ky));
+          const px = Math.min(width - 1, Math.max(0, x + kx));
+          const pIdx = (py * width + px) * 4;
+          
+          rValues.push(src[pIdx]);
+          gValues.push(src[pIdx+1]);
+          bValues.push(src[pIdx+2]);
+        }
+      }
+
+      rValues.sort((a, b) => a - b);
+      gValues.sort((a, b) => a - b);
+      bValues.sort((a, b) => a - b);
+
+      const mid = Math.floor(rValues.length / 2);
+
+      destData[idx] = rValues[mid];
+      destData[idx + 1] = gValues[mid];
+      destData[idx + 2] = bValues[mid];
+      destData[idx + 3] = src[idx + 3];
+    }
+  }
+  return dest;
+}
+
+// 2. Bilateral Filter: Blurs similar colors
+function applyBilateralFilter(imageData: ImageData, strength: number): ImageData {
+  const src = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  const dest = new ImageData(new Uint8ClampedArray(src), width, height);
+  const destData = dest.data;
+  
+  // Revised mapping: 
+  // Strength 0-100 -> Radius 2-12 (larger radius needed for HD images)
+  const spatialRadius = Math.max(2, Math.floor((strength / 100) * 12)); 
+  const sigmaSpatial = spatialRadius / 2;
+  const sigmaColor = 30 + (strength * 1.5); // Color tolerance
+  
+  // Precompute spatial weights
+  const spatialWeights = [];
+  for (let i = -spatialRadius; i <= spatialRadius; i++) {
+      spatialWeights.push(Math.exp(-(i * i) / (2 * sigmaSpatial * sigmaSpatial)));
+  }
+  
+  // Lookup table for color weights (speed optimization)
+  const colorWeights = new Float32Array(256 * 3); // Approx max diff
+  const colorCoeff = -1 / (2 * sigmaColor * sigmaColor);
+  for (let i = 0; i < colorWeights.length; i++) {
+      colorWeights[i] = Math.exp(i * i * colorCoeff);
+  }
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const centerR = src[idx];
+      const centerG = src[idx + 1];
+      const centerB = src[idx + 2];
+      
+      let sumR = 0, sumG = 0, sumB = 0, sumW = 0;
+      
+      for (let dy = -spatialRadius; dy <= spatialRadius; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) continue;
+        const spatialW_Y = spatialWeights[dy + spatialRadius];
+
+        for (let dx = -spatialRadius; dx <= spatialRadius; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= width) continue;
+          
+          const nIdx = (ny * width + nx) * 4;
+          const nR = src[nIdx];
+          const nG = src[nIdx + 1];
+          const nB = src[nIdx + 2];
+          
+          const dist = Math.abs(nR - centerR) + Math.abs(nG - centerG) + Math.abs(nB - centerB);
+          const weight = spatialW_Y * spatialWeights[dx + spatialRadius] * Math.exp(dist * dist * colorCoeff); // simple approximation
+
+          sumR += nR * weight;
+          sumG += nG * weight;
+          sumB += nB * weight;
+          sumW += weight;
+        }
+      }
+      
+      destData[idx] = sumR / sumW;
+      destData[idx + 1] = sumG / sumW;
+      destData[idx + 2] = sumB / sumW;
+      destData[idx + 3] = src[idx + 3];
+    }
+  }
+  return dest;
+}
+
+// 3. Kuwahara Filter: The "Oil Paint" effect, critical for pixel art clustering
+function applyKuwaharaFilter(imageData: ImageData, strength: number): ImageData {
+  const src = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  const dest = new ImageData(new Uint8ClampedArray(src), width, height);
+  const destData = dest.data;
+  
+  // Revised mapping: Radius 2 to 14. 
+  // Small radii (2-4) are barely visible on large images. 
+  // Large radii (10+) create the distinct "flat" look.
+  const radius = Math.max(2, Math.floor((strength / 100) * 14));
+  
+  // Pre-calculate integral images could optimize this, but for now we stick to direct logic for clarity
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      if (src[idx+3] === 0) continue;
+
+      let minVariance = Infinity;
+      let bestMean = { r: src[idx], g: src[idx+1], b: src[idx+2] };
+      
+      // The 4 sub-quadrants
+      const ranges = [
+          [ -radius, 0, -radius, 0 ], // TL
+          [ 0, radius, -radius, 0 ],  // TR
+          [ -radius, 0, 0, radius ],  // BL
+          [ 0, radius, 0, radius ]    // BR
+      ];
+
+      for (let i = 0; i < 4; i++) {
+          const [xStart, xEnd, yStart, yEnd] = ranges[i];
+          let rSum = 0, gSum = 0, bSum = 0;
+          let rSqSum = 0, gSqSum = 0, bSqSum = 0;
+          let count = 0;
+
+          for (let dy = yStart; dy <= yEnd; dy++) {
+              const ny = y + dy;
+              if (ny < 0 || ny >= height) continue;
+              
+              for (let dx = xStart; dx <= xEnd; dx++) {
+                  const nx = x + dx;
+                  if (nx < 0 || nx >= width) continue;
+
+                  const pIdx = (ny * width + nx) * 4;
+                  const r = src[pIdx];
+                  const g = src[pIdx+1];
+                  const b = src[pIdx+2];
+
+                  rSum += r; gSum += g; bSum += b;
+                  rSqSum += r*r; gSqSum += g*g; bSqSum += b*b;
+                  count++;
+              }
+          }
+
+          if (count === 0) continue;
+
+          const meanR = rSum / count;
+          const meanG = gSum / count;
+          const meanB = bSum / count;
+          
+          const variance = (rSqSum + gSqSum + bSqSum) / count - (meanR*meanR + meanG*meanG + meanB*meanB);
+
+          if (variance < minVariance) {
+              minVariance = variance;
+              bestMean = { r: meanR, g: meanG, b: meanB };
+          }
+      }
+
+      destData[idx] = bestMean.r;
+      destData[idx + 1] = bestMean.g;
+      destData[idx + 2] = bestMean.b;
+      destData[idx + 3] = src[idx + 3];
+    }
+  }
+  return dest;
+}
+
 // --- Main Handler ---
 
 self.onmessage = async (e: MessageEvent) => {
+    // ... [Keep Suggestion handling logic] ...
     const { type, imageData, settings } = e.data;
     
     if (type === 'suggest') {
-        // Handle suggestion request
         try {
-            const { palette, numSuggestions } = settings;
-            const suggestions = await suggestMissingColors(imageData, palette, numSuggestions || 5);
+            const { palette, numSuggestions, preferDistinct } = settings;
+            const suggestions = await suggestMissingColors(imageData, palette, numSuggestions || 5, preferDistinct || false);
             self.postMessage({ type: 'suggestions', suggestions });
         } catch (error: any) {
             self.postMessage({ type: 'error', message: error.message });
         }
         return;
     }
-    
-    // Regular processing
-    const { targetWidth, targetHeight, ditherMethod, ditherStrength, palette, resamplingMethod, useKmeans, kmeansColors, brightness, contrast, saturation } = settings;
+
+    const { targetWidth, targetHeight, ditherMethod, ditherStrength, palette, resamplingMethod, useKmeans, kmeansColors, brightness, contrast, saturation, preprocessingMethod, preprocessingStrength, filterTrivialColors, colorStats } = settings;
 
     try {
-        // 0. Apply Color Modifiers
+        // Filter out trivial colors if enabled
+        let effectivePalette = palette;
+        if (filterTrivialColors && colorStats && Array.isArray(colorStats) && colorStats.length > 0) {
+            const colorStatsMap = new Map((colorStats as Array<{ color: string; percent: number }>).map((item: { color: string; percent: number }) => [item.color, item.percent]));
+            effectivePalette = palette.filter((color: string) => {
+                const percent = colorStatsMap.get(color);
+                // Keep color if it's not in stats (unused) or if it's above threshold
+                // For filtering, we want to EXCLUDE unused and below-threshold colors
+                if (!percent) return false; // Exclude unused
+                return percent >= 0.5; // Only keep above threshold
+            });
+            // If all colors would be filtered, keep the original palette
+            if (effectivePalette.length === 0) {
+                effectivePalette = palette;
+            }
+        }
+
+        // 0. Apply Color Modifiers (Global Adjustments)
         let processedImageData = imageData;
         if ((brightness && brightness !== 0) || (contrast && contrast !== 0) || (saturation && saturation !== 0)) {
             processedImageData = applyColorModifiers(imageData, brightness || 0, contrast || 0, saturation || 0);
         }
 
+        // 0.5. Apply Preprocessing Filters
+        // Filters now use improved "Radius" mapping based on strength
+        if (preprocessingMethod && preprocessingMethod !== 'none') {
+            const strength = preprocessingStrength || 50;
+            
+            if (preprocessingMethod === 'median') {
+                processedImageData = applyMedianFilter(processedImageData, strength);
+            } else if (preprocessingMethod === 'bilateral') {
+                processedImageData = applyBilateralFilter(processedImageData, strength);
+            } else if (preprocessingMethod === 'kuwahara') {
+                processedImageData = applyKuwaharaFilter(processedImageData, strength);
+            }
+        }
+
+        // ... [Rest of logic: Resize -> Kmeans -> Dither remains exactly the same] ...
         // 1. Resize
         let resizedImageData: ImageData;
         if (resamplingMethod === 'lanczos') {
@@ -688,17 +953,17 @@ self.onmessage = async (e: MessageEvent) => {
             resizedImageData = resampleNearest(processedImageData, targetWidth, targetHeight);
         }
 
-        // 2. (Optional) K-Means color clustering
+        // 2. K-Means
         let generatedPalette: string[] | undefined;
-
         if (useKmeans && kmeansColors > 0) {
-            const pixels = resizedImageData.data;
-            const pixelArray: number[][] = [];
-            for (let i = 0; i < pixels.length; i += 4) {
+           // ... [Existing Kmeans logic] ...
+           const pixels = resizedImageData.data;
+           const pixelArray: number[][] = [];
+           for (let i = 0; i < pixels.length; i += 4) {
                 if (pixels[i + 3] > 128) {
                     pixelArray.push([pixels[i], pixels[i + 1], pixels[i + 2]]);
                 }
-            }
+           }
 
             if (pixelArray.length > 0) {
                 const kmeansResult = await kmeans(pixelArray, Math.min(kmeansColors, pixelArray.length));
@@ -708,7 +973,6 @@ self.onmessage = async (e: MessageEvent) => {
                     b: Math.round(c[2])
                 }));
                 
-                // Store generated palette for UI
                 generatedPalette = paletteRGB.map(c => 
                     "#" + ((1 << 24) + (c.r << 16) + (c.g << 8) + c.b).toString(16).slice(1).toUpperCase()
                 );
@@ -728,8 +992,8 @@ self.onmessage = async (e: MessageEvent) => {
         }
 
         // 3. Dither
-        if (palette && palette.length > 0) {
-            applyDithering(resizedImageData, palette, ditherMethod, ditherStrength);
+        if (effectivePalette && effectivePalette.length > 0) {
+            applyDithering(resizedImageData, effectivePalette, ditherMethod, ditherStrength);
         }
 
         self.postMessage({ type: 'success', imageData: resizedImageData, generatedPalette });

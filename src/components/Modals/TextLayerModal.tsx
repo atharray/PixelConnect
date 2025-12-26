@@ -58,12 +58,13 @@ const TextLayerModal: React.FC<TextLayerModalProps> = ({ isOpen, onClose, existi
     }
   }, [existingLayer]);
   
-  // Auto-generate preview when inputs change
+  // Auto-generate preview when inputs change (only if modal is open)
   useEffect(() => {
-    if (text.trim()) {
-      generatePreview();
+    if (!isOpen || !text.trim()) {
+      return;
     }
-  }, [text, fontSize, fontFamily, color, textAlign, disableTransparency, lineHeight, letterSpacing, fontWeight]);
+    generatePreview();
+  }, [text, fontSize, fontFamily, color, textAlign, disableTransparency, lineHeight, letterSpacing, fontWeight, isOpen]);
   
   // Handle canvas preview
   useEffect(() => {

@@ -12,6 +12,41 @@ function CanvasSettings() {
   const setCanvasConfig = useCompositorStore((state) => state.setCanvasConfig);
   const cropCanvasToLayers = useCompositorStore((state) => state.cropCanvasToLayers);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [displayWidth, setDisplayWidth] = useState(String(canvas.width));
+  const [displayHeight, setDisplayHeight] = useState(String(canvas.height));
+
+  const handleWidthChange = (value: string) => {
+    // Allow any input including empty strings for display
+    setDisplayWidth(value);
+    // Only update state if it's a valid positive number
+    if (value !== '' && value !== '-') {
+      const width = parseInt(value, 10);
+      if (!isNaN(width) && width > 0) {
+        setCanvasConfig({ width });
+      }
+    }
+  };
+
+  const handleHeightChange = (value: string) => {
+    // Allow any input including empty strings for display
+    setDisplayHeight(value);
+    // Only update state if it's a valid positive number
+    if (value !== '' && value !== '-') {
+      const height = parseInt(value, 10);
+      if (!isNaN(height) && height > 0) {
+        setCanvasConfig({ height });
+      }
+    }
+  };
+
+  // Sync display values when canvas config changes from outside
+  useEffect(() => {
+    setDisplayWidth(String(canvas.width));
+  }, [canvas.width]);
+
+  useEffect(() => {
+    setDisplayHeight(String(canvas.height));
+  }, [canvas.height]);
 
   // Sync canvas settings to localStorage
   useEffect(() => {
@@ -20,22 +55,6 @@ function CanvasSettings() {
     preferences.canvasShadowIntensity = canvas.shadowIntensity;
     savePreferences(preferences);
   }, [canvas.borderEnabled, canvas.shadowIntensity]);
-
-  const handleWidthChange = (value: string) => {
-    const width = parseInt(value);
-    if (!isNaN(width) && width > 0) {
-      setCanvasConfig({ width });
-      // console.log(`[DEBUG] Canvas width changed to ${width}`);
-    }
-  };
-
-  const handleHeightChange = (value: string) => {
-    const height = parseInt(value);
-    if (!isNaN(height) && height > 0) {
-      setCanvasConfig({ height });
-      // console.log(`[DEBUG] Canvas height changed to ${height}`);
-    }
-  };
 
   const handleBackgroundColorChange = (value: string) => {
     if (value === 'transparent') {
@@ -93,10 +112,10 @@ function CanvasSettings() {
         <div>
           <label className="text-xs text-gray-400 block mb-1">Width</label>
           <input
-            type="number"
-            value={canvas.width}
+            type="text"
+            inputMode="numeric"
+            value={displayWidth}
             onChange={(e) => handleWidthChange(e.target.value)}
-            min={1}
             className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
             placeholder="Width"
           />
@@ -105,10 +124,10 @@ function CanvasSettings() {
         <div>
           <label className="text-xs text-gray-400 block mb-1">Height</label>
           <input
-            type="number"
-            value={canvas.height}
+            type="text"
+            inputMode="numeric"
+            value={displayHeight}
             onChange={(e) => handleHeightChange(e.target.value)}
-            min={1}
             className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
             placeholder="Height"
           />

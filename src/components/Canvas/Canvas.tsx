@@ -210,7 +210,7 @@ function Canvas() {
   return (
     <div className="w-full h-full flex flex-col relative" onPaste={handlePaste}>
       {/* Canvas Area */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden" data-canvas-container="true">
         <CanvasRenderer />
       </div>
 

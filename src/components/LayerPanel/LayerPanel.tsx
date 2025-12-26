@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import LayerItem from './LayerItem';
+import CanvasSettings from '../PropertyPanel/CanvasSettings';
 
 /**
  * Layer panel component
@@ -194,6 +195,11 @@ function LayerPanel() {
           {selectedLayerIds.length > 0 && ` • ${selectedLayerIds.length} selected`}
         </div>
       )}
+
+      {/* Canvas Settings (moved from Property panel) */}
+      <div className="border-t border-border px-3 py-2 bg-panel-bg">
+        <CanvasSettings />
+      </div>
 
       {/* Hidden file input */}
       <input

@@ -11,6 +11,7 @@ import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useAutoHistory from './hooks/useAutoHistory';
 import useDebugMenu from './hooks/useDebugMenu';
 import { useAutoSave } from './hooks/useAutoSave';
+import { useAutoResetZoom } from './hooks/useAutoResetZoom';
 import { useInitializePreferences } from './hooks/useLocalStorage';
 import { Layer } from './types/compositor.types';
 
@@ -41,6 +42,9 @@ function App() {
 
   // Initialize auto-save
   useAutoSave();
+
+  // Initialize auto-reset zoom when first layer is added
+  useAutoResetZoom();
 
   // Initialize debug menu
   const { isOpen: isDebugMenuOpen, setIsOpen: setIsDebugMenuOpen } = useDebugMenu();

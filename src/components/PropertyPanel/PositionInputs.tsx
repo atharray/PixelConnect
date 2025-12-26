@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import useCompositorStore from '../../store/compositorStore';
 import { Layer } from '../../types/compositor.types';
 
@@ -15,25 +16,46 @@ function PositionInputs({ layer }: PositionInputsProps) {
   const dragLayerId = useCompositorStore((state) => state.ui.dragLayerId);
   const dragOffsetX = useCompositorStore((state) => state.ui.dragOffsetX);
   const dragOffsetY = useCompositorStore((state) => state.ui.dragOffsetY);
+  
+  // Local state for display values to allow clearing
+  const [inputX, setInputX] = useState(String(layer.x));
+  const [inputY, setInputY] = useState(String(layer.y));
 
   // Show preview position during drag, otherwise show actual position
   const isDraggingThisLayer = isDraggingLayer && dragLayerId === layer.id;
   const displayX = isDraggingThisLayer ? Math.floor(layer.x + dragOffsetX) : layer.x;
   const displayY = isDraggingThisLayer ? Math.floor(layer.y + dragOffsetY) : layer.y;
 
+  // Sync display values when layer position changes from outside
+  useEffect(() => {
+    setInputX(String(displayX));
+  }, [displayX]);
+
+  useEffect(() => {
+    setInputY(String(displayY));
+  }, [displayY]);
+
   const handleXChange = (value: string) => {
-    const x = parseInt(value);
-    if (!isNaN(x)) {
-      updateLayer(layer.id, { x });
-      // console.log(`[DEBUG] Layer ${layer.name} X position changed to ${x}`);
+    // Allow any input including empty strings for display
+    setInputX(value);
+    // Only update state if it's a valid number
+    if (value !== '' && value !== '-') {
+      const x = parseInt(value, 10);
+      if (!isNaN(x)) {
+        updateLayer(layer.id, { x });
+      }
     }
   };
 
   const handleYChange = (value: string) => {
-    const y = parseInt(value);
-    if (!isNaN(y)) {
-      updateLayer(layer.id, { y });
-      // console.log(`[DEBUG] Layer ${layer.name} Y position changed to ${y}`);
+    // Allow any input including empty strings for display
+    setInputY(value);
+    // Only update state if it's a valid number
+    if (value !== '' && value !== '-') {
+      const y = parseInt(value, 10);
+      if (!isNaN(y)) {
+        updateLayer(layer.id, { y });
+      }
     }
   };
 
@@ -50,8 +72,9 @@ function PositionInputs({ layer }: PositionInputsProps) {
       <div>
         <label className="text-xs text-gray-400 block mb-1">X</label>
         <input
-          type="number"
-          value={displayX}
+          type="text"
+          inputMode="numeric"
+          value={inputX}
           onChange={(e) => handleXChange(e.target.value)}
           onBlur={handlePositionFinalized}
           className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
@@ -63,8 +86,9 @@ function PositionInputs({ layer }: PositionInputsProps) {
       <div>
         <label className="text-xs text-gray-400 block mb-1">Y</label>
         <input
-          type="number"
-          value={displayY}
+          type="text"
+          inputMode="numeric"
+          value={inputY}
           onChange={(e) => handleYChange(e.target.value)}
           onBlur={handlePositionFinalized}
           className="w-full px-2 py-1 bg-canvas-bg border border-border rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-400"

@@ -1,10 +1,10 @@
 import useCompositorStore from '../../store/compositorStore';
 import PositionInputs from './PositionInputs';
 import OpacityControl from './OpacityControl';
-import CanvasSettings from './CanvasSettings';
 import ColorAnalysis from './ColorAnalysis';
 import ShapeProperties from './ShapeProperties';
 import TransparencyMaskModal from '../Modals/TransparencyMaskModal';
+import BgRemovalModal from '../Modals/BgRemovalModal';
 import PixelatorModal from '../Modals/PixelatorModal';
 import CropModal from '../Modals/CropModal';
 import { useState } from 'react';
@@ -24,6 +24,7 @@ function PropertyPanel() {
   const [isTransparencyModalOpen, setIsTransparencyModalOpen] = useState(false);
   const [isPixelatorModalOpen, setIsPixelatorModalOpen] = useState(false);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [isBgRemovalModalOpen, setIsBgRemovalModalOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col bg-canvas-bg overflow-hidden">
@@ -106,6 +107,15 @@ function PropertyPanel() {
                     >
                       Crop
                     </button>
+                    <button
+                      onClick={() => {
+                        setIsBgRemovalModalOpen(true);
+                        setIsModifyMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-slate-700 hover:text-white"
+                    >
+                      BG Removal (Experimental)
+                    </button>
                   </div>
                 )}
               </div>
@@ -129,6 +139,14 @@ function PropertyPanel() {
             )}
 
             {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (
+              <BgRemovalModal
+                isOpen={isBgRemovalModalOpen}
+                onClose={() => setIsBgRemovalModalOpen(false)}
+                layer={selectedLayers[0]}
+              />
+            )}
+
+            {selectedLayerIds.length === 1 && selectedLayers.length > 0 && (
               <CropModal
                 isOpen={isCropModalOpen}
                 onClose={() => setIsCropModalOpen(false)}
@@ -142,10 +160,7 @@ function PropertyPanel() {
         )}
       </div>
 
-      {/* Canvas Settings */}
-      <div className="border-t border-border">
-        <CanvasSettings />
-      </div>
+      {/* Canvas Settings moved to Layer panel */}
     </div>
   );
 }

@@ -6,9 +6,44 @@ import useCompositorStore from '../../store/compositorStore';
  */
 function ZoomControls() {
   const viewport = useCompositorStore((state) => state.project.viewport);
+  const canvas = useCompositorStore((state) => state.project.canvas);
   const setViewport = useCompositorStore((state) => state.setViewport);
 
-  const ZOOM_LEVELS = [25, 50, 100, 200, 400, 800, 1600, 3200];
+  const ZOOM_LEVELS = [25, 33, 50, 66, 100, 150, 200, 400, 800, 1600, 3200];
+
+  const calculateFitZoom = (): number => {
+    // Find the canvas container element
+    const container = document.querySelector('[data-canvas-container="true"]');
+    if (!container) {
+      return 100; // Fallback to 100%
+    }
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    if (containerWidth <= 0 || containerHeight <= 0) {
+      return 100;
+    }
+
+    if (canvas.width <= 0 || canvas.height <= 0) {
+      return 100;
+    }
+
+    const scaleX = containerWidth / canvas.width;
+    const scaleY = containerHeight / canvas.height;
+
+    const fitZoom = Math.min(scaleX, scaleY) * 100;
+    // Snap to a preset zoom level, then go one level smaller for better visibility
+    const nearestZoom = ZOOM_LEVELS.reduce((prev, curr) =>
+      Math.abs(curr - fitZoom) < Math.abs(prev - fitZoom) ? curr : prev
+    );
+    
+    // Find the index of nearest zoom and go one level smaller for better visibility
+    const nearestIndex = ZOOM_LEVELS.indexOf(nearestZoom);
+    const resetZoom = nearestIndex > 0 ? ZOOM_LEVELS[nearestIndex - 1] : nearestZoom;
+
+    return resetZoom;
+  };
 
   const handleZoom = (zoomLevel: number) => {
     // console.log(`[DEBUG] Zoom level changed to ${zoomLevel}%`);
@@ -28,7 +63,8 @@ function ZoomControls() {
   };
 
   const handleResetZoom = () => {
-    setViewport({ zoom: 100, panX: 0, panY: 0 });
+    const fitZoom = calculateFitZoom();
+    setViewport({ zoom: fitZoom, panX: 0, panY: 0 });
   };
 
   return (
@@ -80,7 +116,7 @@ function ZoomControls() {
       <button
         onClick={handleResetZoom}
         className="px-2 py-1 text-xs font-medium text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded transition-colors"
-        title="Reset zoom to 100% and center canvas"
+        title="Fit canvas to screen"
       >
         Reset
       </button>

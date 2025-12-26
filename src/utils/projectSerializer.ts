@@ -12,8 +12,14 @@ const MIN_SUPPORTED_VERSION = '1.0.0';
  * Serialize project to JSON string
  */
 export function serializeProject(project: ProjectData): string {
+  // Filter out temporary canvas preview layers before serializing
+  const filteredLayers = project.layers.filter(
+    layer => layer.id !== '__text_canvas_preview__' && layer.id !== '__shape_canvas_preview__'
+  );
+
   const serialized: ProjectData = {
     ...project,
+    layers: filteredLayers,
     modified: new Date().toISOString(),
   };
 
@@ -42,6 +48,13 @@ export async function deserializeProject(jsonString: string): Promise<ProjectDat
         `Project version ${data.version} is not supported. ` +
         `Current version: ${CURRENT_VERSION}, ` +
         `minimum supported: ${MIN_SUPPORTED_VERSION}`
+      );
+    }
+
+    // Filter out temporary canvas preview layers
+    if (data.layers) {
+      data.layers = data.layers.filter(
+        (layer: any) => layer.id !== '__text_canvas_preview__' && layer.id !== '__shape_canvas_preview__'
       );
     }
 
