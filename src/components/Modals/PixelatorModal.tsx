@@ -759,9 +759,9 @@ const PixelatorModal: React.FC<PixelatorModalProps> = ({ isOpen, onClose, layer 
                             checked={filterTrivialColors}
                             onChange={(e) => setFilterTrivialColors(e.target.checked)}
                             className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-800"
-                            title="Ignore colors below 0.5% usage during processing"
+                            title="Ignore colors below 0.1% usage during processing"
                           />
-                          <span className="text-xs text-gray-400">Filter trivial colors (&lt;0.5%)</span>
+                          <span className="text-xs text-gray-400">Filter trivial colors (&lt;0.1%)</span>
                         </label>
                         <div className="flex items-center justify-between gap-2">
                           <label className="text-xs font-semibold text-gray-400 uppercase whitespace-nowrap">Suggest Colors</label>

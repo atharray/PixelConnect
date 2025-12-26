@@ -914,7 +914,7 @@ self.onmessage = async (e: MessageEvent) => {
                 // Keep color if it's not in stats (unused) or if it's above threshold
                 // For filtering, we want to EXCLUDE unused and below-threshold colors
                 if (!percent) return false; // Exclude unused
-                return percent >= 0.5; // Only keep above threshold
+                return percent >= 0.1; // Only keep above threshold (0.1%)
             });
             // If all colors would be filtered, keep the original palette
             if (effectivePalette.length === 0) {
